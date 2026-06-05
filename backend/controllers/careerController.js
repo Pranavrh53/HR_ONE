@@ -61,9 +61,9 @@ const applyToJob = async (req, res) => {
             const screened = await applyScreeningToResume(resume, job, req.file.path);
             return res.status(201).json({
                 success: true,
-                message: screened.aiAnalysis?.analysisMode === 'gemini'
-                    ? 'Application submitted and screened by Gemini AI'
-                    : 'Application submitted and screened (local PyMuPDF analysis — Gemini quota unavailable)',
+                message: screened.aiAnalysis?.analysisMode?.includes('gemini')
+                    ? 'Application submitted and ATS-screened (deterministic score + AI explanation)'
+                    : 'Application submitted and ATS-screened (deterministic scoring)',
                 data: screened,
             });
         } catch (aiError) {

@@ -1,6 +1,5 @@
 import os
 import json
-import re
 import fitz  # PyMuPDF
 from typing import List
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
@@ -8,6 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+
+from screening_pipeline import (
+    parse_skills,
+    run_screening_pipeline,
+)
 
 load_dotenv()
 
@@ -25,115 +29,6 @@ def extract_text(pdf_bytes: bytes) -> str:
         for page in doc:
             text += page.get_text()
     return text.strip()
-
-
-def parse_skills(required_skills: str) -> List[str]:
-    if not required_skills:
-        return []
-    parts = re.split(r"[,;\n|]+", required_skills)
-    return [p.strip() for p in parts if p.strip()]
-
-
-def estimate_experience(text: str) -> str:
-    match = re.search(r"(\d+)\+?\s*(?:years?|yrs?)\s*(?:of\s*)?(?:experience|exp)", text, re.I)
-    if match:
-        return f"{match.group(1)} years"
-    return "Not specified"
-
-
-def estimate_education(text: str) -> str:
-    patterns = [
-        r"B\.?\s*E\.?|B\.?\s*Tech|M\.?\s*Tech|B\.?\s*Sc|M\.?\s*Sc|MBA|Ph\.?\s*D",
-        r"Bachelor|Master|Doctorate",
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, text, re.I)
-        if match:
-            return match.group(0)
-    return "Not specified"
-
-
-def recommendation_from_score(score: int) -> str:
-    if score >= 85:
-        return "Highly Recommended"
-    if score >= 70:
-        return "Recommended"
-    if score >= 50:
-        return "Potential Match"
-    return "Not Recommended"
-
-
-def build_interview_questions(matched: List[str], missing: List[str], job_title: str) -> List[str]:
-    questions = []
-    for skill in matched[:2]:
-        questions.append(f"Explain your experience with {skill} and a project where you used it.")
-    for skill in missing[:2]:
-        questions.append(f"The role requires {skill}. How would you approach learning or applying it?")
-    if len(questions) < 3:
-        questions.append(f"Describe a challenging project relevant to the {job_title} role.")
-    if len(questions) < 4:
-        questions.append("How would you design a scalable REST API for an HRMS product?")
-    if len(questions) < 5:
-        questions.append("Explain how you would optimize MongoDB queries for large datasets.")
-    return questions[:5]
-
-
-def local_screen_resume(
-    resume_text: str,
-    job_title: str,
-    job_description: str,
-    required_skills: str,
-    candidate_name: str = "",
-) -> dict:
-    skills = parse_skills(required_skills)
-    text_lower = resume_text.lower()
-
-    matched = [skill for skill in skills if skill.lower() in text_lower]
-    missing = [skill for skill in skills if skill.lower() not in text_lower]
-
-    skill_ratio = (len(matched) / len(skills)) if skills else 0.5
-    jd_hits = sum(1 for word in re.findall(r"[a-zA-Z]{4,}", job_description.lower()) if word in text_lower)
-    jd_bonus = min(jd_hits / 20, 1) * 15
-    experience = estimate_experience(resume_text)
-    education = estimate_education(resume_text)
-
-    score = int(min(100, round(skill_ratio * 70 + jd_bonus + min(len(resume_text) / 500, 15))))
-    recommendation = recommendation_from_score(score)
-
-    strengths = []
-    if matched:
-        strengths.append(f"Strong match on: {', '.join(matched[:4])}")
-    if "project" in text_lower or "built" in text_lower or "developed" in text_lower:
-        strengths.append("Demonstrates hands-on project experience")
-    if not strengths:
-        strengths.append("Resume provides baseline profile for review")
-
-    weaknesses = []
-    if missing:
-        weaknesses.append(f"Missing key skills: {', '.join(missing[:4])}")
-    if experience == "Not specified":
-        weaknesses.append("Experience level not clearly stated")
-    if not weaknesses:
-        weaknesses.append("Limited alignment with some job requirements")
-
-    return {
-        "score": score,
-        "match_percentage": float(score),
-        "summary": (
-            f"Local screening analysis for {candidate_name or 'candidate'} against {job_title}. "
-            f"Matched {len(matched)} of {len(skills) or 'listed'} required skills."
-        ),
-        "strengths": strengths[:3],
-        "weaknesses": weaknesses[:2],
-        "skills_matched": matched,
-        "skills_missing": missing,
-        "years_of_experience": experience,
-        "education": education,
-        "recommendation": recommendation,
-        "interview_questions": build_interview_questions(matched, missing, job_title),
-        "extracted_text": resume_text[:8000],
-        "analysis_mode": "local",
-    }
 
 
 def parse_json_response(raw: str):
@@ -156,7 +51,7 @@ def call_gemini(prompt: str, retries: int = 2) -> str:
             response = client.models.generate_content(
                 model=MODEL,
                 contents=prompt,
-                config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=2048),
+                config=types.GenerateContentConfig(temperature=0.1, max_output_tokens=2048),
             )
             return response.text
         except Exception as e:
@@ -169,44 +64,6 @@ def call_gemini(prompt: str, retries: int = 2) -> str:
     raise Exception("Gemini quota exceeded or unavailable")
 
 
-def screen_with_gemini(resume_text: str, job_title: str, job_description: str, required_skills: str) -> dict:
-    prompt = f"""You are a senior Technical HR Recruiter with 15+ years of experience.
-
-Carefully analyze this Resume against the Job Description and provide an accurate evaluation.
-
-=== JOB DETAILS ===
-Title: {job_title}
-Required Skills: {required_skills}
-Description: {job_description}
-
-=== RESUME ===
-{resume_text[:6000]}
-
-=== TASK ===
-Evaluate strictly. Consider skill match, experience level, education, and project relevance.
-
-Respond ONLY with a valid JSON object (no markdown fences, no extra text):
-{{
-  "score": <integer 0-100>,
-  "match_percentage": <float same as score>,
-  "summary": "<2-3 sentence professional summary of the candidate fit>",
-  "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
-  "weaknesses": ["<gap 1>", "<gap 2>"],
-  "skills_matched": ["<matched skill>"],
-  "skills_missing": ["<missing skill>"],
-  "years_of_experience": "<estimated e.g. 3 years>",
-  "education": "<highest qualification>",
-  "recommendation": "<Highly Recommended|Recommended|Potential Match|Not Recommended>",
-  "interview_questions": ["<question 1>", "<question 2>", "<question 3>", "<question 4>", "<question 5>"]
-}}"""
-
-    raw = call_gemini(prompt).strip()
-    result = parse_json_response(raw)
-    result["extracted_text"] = resume_text[:8000]
-    result["analysis_mode"] = "gemini"
-    return result
-
-
 def analyze_resume(
     resume_text: str,
     job_title: str,
@@ -214,26 +71,33 @@ def analyze_resume(
     required_skills: str,
     candidate_name: str = "",
 ) -> dict:
-    try:
-        return screen_with_gemini(resume_text, job_title, job_description, required_skills)
-    except Exception as error:
-        print(f"Gemini unavailable, using local screening: {error}")
-        return local_screen_resume(
-            resume_text,
-            job_title,
-            job_description,
-            required_skills,
-            candidate_name,
-        )
+    """
+    Pipeline: PyMuPDF text → deterministic skill match + ATS score → Gemini explanation only.
+    """
+    gemini_fn = call_gemini if client else None
+    return run_screening_pipeline(
+        resume_text=resume_text,
+        job_title=job_title,
+        job_description=job_description,
+        required_skills=required_skills,
+        candidate_name=candidate_name,
+        call_gemini_fn=gemini_fn,
+        parse_json_fn=parse_json_response,
+    )
 
 
 @app.get("/health")
 async def health():
+    from screening_pipeline import get_embedding_model
+
+    model = get_embedding_model()
     return {
         "status": "ok",
         "service": "TalentSphere AI",
         "model": MODEL,
         "gemini_configured": bool(GEMINI_API_KEY),
+        "pipeline": "PyMuPDF → Skill Match → Deterministic ATS Score → Gemini Explanation",
+        "sentence_transformers": model is not None,
     }
 
 
@@ -297,11 +161,79 @@ async def screen_multiple(
             continue
 
         analysis = analyze_resume(text, job_title, job_description, required_skills, file.filename)
-        analysis["candidate_name"] = file.filename
+        analysis["candidate_name"] = analysis.get("candidate_name") or file.filename
         results.append(analysis)
 
     results.sort(key=lambda x: x.get("score", 0), reverse=True)
     return {"results": results, "total": len(results)}
+
+
+@app.post("/compare-candidates")
+async def compare_candidates_endpoint(body: dict):
+    job_title = body.get("job_title", "")
+    job_description = body.get("job_description", "")
+    required_skills = body.get("required_skills", "")
+    candidates = body.get("candidates", [])
+
+    if len(candidates) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 candidates required")
+
+    candidates_sorted = sorted(candidates, key=lambda x: x.get("score", 0), reverse=True)
+    prompt = f"""You are a senior technical recruiter comparing candidates for one role.
+
+Job: {job_title}
+Description: {job_description[:1000]}
+Required Skills: {required_skills}
+
+Candidates (pre-scored by ATS — do not change scores):
+{json.dumps(candidates_sorted, indent=2)}
+
+Write a comparative hiring report. Be specific — reference actual skills, experience, and summaries.
+
+Return ONLY valid JSON:
+{{
+  "best_technical_fit": {{"candidate_id": "", "name": "", "reason": ""}},
+  "best_project_portfolio": {{"candidate_id": "", "name": "", "reason": ""}},
+  "best_experience_match": {{"candidate_id": "", "name": "", "reason": ""}},
+  "final_recommendation": "<who to interview first and why>",
+  "comparison_summary": "<3-4 sentence overview>",
+  "ranking_rationale": ["<why #1 ranked above #2>", "..."]
+}}"""
+
+    try:
+        raw = call_gemini(prompt).strip()
+        report = parse_json_response(raw)
+        report["candidates_compared"] = len(candidates)
+        report["analysis_mode"] = "gemini"
+        return report
+    except Exception as e:
+        top = candidates_sorted[0]
+        second = candidates_sorted[1] if len(candidates_sorted) > 1 else top
+        return {
+            "best_technical_fit": {
+                "candidate_id": top.get("id", ""),
+                "name": top.get("name", ""),
+                "reason": f"Highest ATS score ({top.get('score')}) with skills: {', '.join((top.get('matched_skills') or [])[:4])}",
+            },
+            "best_project_portfolio": {
+                "candidate_id": top.get("id", ""),
+                "name": top.get("name", ""),
+                "reason": top.get("summary", "Strongest overall profile from ATS breakdown"),
+            },
+            "best_experience_match": {
+                "candidate_id": top.get("id", ""),
+                "name": top.get("name", ""),
+                "reason": f"Experience: {top.get('experience', 'N/A')}",
+            },
+            "final_recommendation": f"Interview {top.get('name')} first (score {top.get('score')}), then {second.get('name')} (score {second.get('score')}).",
+            "comparison_summary": f"Compared {len(candidates)} candidates. {top.get('name')} leads on composite ATS score.",
+            "ranking_rationale": [
+                f"{top.get('name')} outscores {second.get('name')} on overall ATS fit",
+            ],
+            "candidates_compared": len(candidates),
+            "analysis_mode": "deterministic_fallback",
+            "error": str(e),
+        }
 
 
 @app.post("/chat")

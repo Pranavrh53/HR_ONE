@@ -56,6 +56,11 @@ const jobSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    autoShortlist: {
+        enabled: { type: Boolean, default: false },
+        minScore: { type: Number, default: 75 },
+        topN: { type: Number, default: 10 },
+    },
 }, {
     timestamps: true,
 });

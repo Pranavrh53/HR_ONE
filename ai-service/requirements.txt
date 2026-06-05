@@ -5,3 +5,4 @@ google-genai
 pymupdf
 python-dotenv
 pydantic
+sentence-transformers

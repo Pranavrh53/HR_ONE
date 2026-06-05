@@ -5,28 +5,39 @@ const { Blob } = require('buffer');
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 const mapRecommendation = (value) => {
-    if (!value) return 'Potential Match';
+    if (!value) return 'Needs Review';
     const normalized = String(value).toLowerCase();
     if (normalized.includes('highly')) return 'Highly Recommended';
-    if (normalized.includes('not')) return 'Not Recommended';
+    if (normalized.includes('not') && normalized.includes('recommend')) return 'Not Recommended';
+    if (normalized.includes('needs') && normalized.includes('review')) return 'Needs Review';
     if (normalized.includes('recommended')) return 'Recommended';
-    if (normalized.includes('maybe')) return 'Potential Match';
+    if (normalized.includes('potential') || normalized.includes('maybe')) return 'Needs Review';
     return value;
 };
 
 const mapAiAnalysis = (result) => ({
-    matchPercentage: Number(result.match_percentage ?? result.score ?? 0),
+    matchPercentage: Number(result.match_percentage ?? result.final_score ?? result.score ?? 0),
     detectedSkills: result.skills_matched || result.matched_skills || [],
     missingSkills: result.skills_missing || result.missing_skills || [],
     experience: result.years_of_experience || result.experience || '',
     education: result.education || '',
     recommendation: mapRecommendation(result.recommendation),
     summary: result.summary || '',
-    score: Number(result.score ?? 0),
+    score: Number(result.final_score ?? result.score ?? 0),
     strengths: result.strengths || [],
     weaknesses: result.weaknesses || [],
     interviewQuestions: result.interview_questions || [],
-    analysisMode: result.analysis_mode || 'gemini',
+    analysisMode: result.analysis_mode || 'deterministic',
+    skillScore: result.skill_score ?? null,
+    experienceScore: result.experience_score ?? null,
+    projectsScore: result.projects_score ?? null,
+    educationScore: result.education_score ?? null,
+    certificationsScore: result.certifications_score ?? null,
+    achievementsScore: result.achievements_score ?? null,
+    resumeQualityScore: result.resume_quality_score ?? null,
+    technicalSkillsFound: result.technical_skills_found || [],
+    scoreBreakdown: result.score_breakdown || [],
+    aiInsights: result.recruiter_insights || result.ai_insights || '',
 });
 
 const callAiScreening = async ({ filePath, fileName, job }) => {
