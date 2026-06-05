@@ -1,0 +1,139 @@
+FWC – AI/ML with Fullstack Job Description 
+FWC -HR-TM-01 
+Revision A1–23 Apr 2026 AI/ML with Fullstack JD FWC IT Services Pvt Ltd 
+TM-01 
+ Page 1 of 3 
+FWC IT Services Pvt. Ltd. – Internal and Proprietary 
+Template No. Revision A2, Date 23 April 2026 
+ 
+FWC – AI/ML with Fullstack Job Description 
+POSITION: NUMBERS: 
+ 
+REQUIRED TECHNOLOGY STACK: 
+ 
+QUALIFICATIONS: 
+ 
+CTC & CAREER OPPORTUNITY: 
+ 
+JOB PROFILE: 
+ 
+40 
+ Job Title : AI/ML with Fullstack Engineer 
+Frontend : React.js, Next.js, Angular, HTML5, CSS3, JavaScript 
+Backend : Node.js, Python, Java 
+Database : MongoDB, MySQL, PostgreSQL 
+AI/ML : OpenAI, Gemini API, Claude, Hugging Face, TensorFlow.js, Python Libraries (pre-trained models acceptable ) 
+Deployment : Vercel, Netlify, Render, Heroku (any free hosting platform) 
+Version Control & Collaboration : Git, GitHub, GitLab, Bitbucket 
+Cloud & DevOps : AWS Free Tier, GCP Free Tier, Azure Free Tier, Docker, GitHub Actions 
+APIs & Integrations : REST, GraphQL, third -party APIs (authentication, notifications, payments) 
+Authentication & Security : OAuth 2.0, JWT, Firebase Auth, basic encryption and hashing 
+UI/UX Tools : Figma, Adobe XD, TailwindCSS, Bootstrap, Material UI 
+Testing : Jest, Mocha, Cypress 
+Submission & Documentation : README, architecture diagrams, API documentation, GitHub repository, deployment 
+link 
+Bachelor’s or Master’s degree in Engineering in AI/ML or Data Science 
+ 
+Starting CTC: ₹ 10 LPA 
+Selected candidates will be under a 3-month training program worth Rs. 4,00,000/ from the industry leaders 
+and business consultants. 
+- Post -training, candidates will be deployed to work on live client projects across our Domestic and 
+International locations, primarily in India , Dubai and Singapore . 
+- Commitment Bond: Minimum 3 years (mandatory) 
+- Annual Salary Growth: 20% –40% hike based on performance and company policies 
+- ESOP Opportunity: Eligible for Employee Stock Ownership Plan (ESOPs) after completing 1 year of service 
+KEY RESPONSIBILITIES: 
+- Develop and implement AI/ML solutions to address complex business challenges. 
+- Research and create Generative AI models for various applications, including natural language processing 
+and computer vision. 
+- Train and fine-tune large language models for enhanced accuracy in specific domains. 
+- Collaborate with cross -functional teams to ensure successful project delivery. 
+- Present AI-driven insights and solutions to stakeholders, demonstrating their impact on business objectives. 
+- Mentor junior team members and foster a culture of continuous learning. 
+- Enthusiasm for AI/ML technologies and a willingness to learn. 
+FWC – AI/ML with Fullstack Job Description 
+FWC -HR-TM-01 
+Revision A1–23 Apr 2026 AI/ML with Fullstack JD FWC IT Services Pvt Ltd 
+TM-01 
+ Page 2 of 3 
+FWC IT Services Pvt. Ltd. – Internal and Proprietary 
+Template No. Revision A2, Date 23 April 2026 
+ INTERVIEW & HIRING STRATEGY: 
+Round 1: Technical Hackathon 
+- A coding hackathon will be conducted exclusively for Computer Science and AI/ML students. 
+- The hackathon duration will be 1–2 weeks from the date of confirmation. 
+- Students can participate from anywhere – college, hostel, or home. 
+- Use of AI tools and mentorship from industry leaders is allowed and encouraged. 
+- Participants may also reach out to the FWC technical team for clarification or guidance. 
+- Eligibility: All students are welcome to participate, regardless of percentage or academic backlogs. 
+Hackathon and Project Details: 
+Theme : Build the Future of HR Management with AI-Powered Solutions 
+ 
+Objective & Project Requirements: Develop a next -generation Human Resource Management System (HRMS) that 
+leverages artificial intelligence to streamline and automate HR operations for modern workplaces. 
+- Incorporate all core HRMS functionalities (employee data management, attendance, payroll, performance 
+tracking, etc.). 
+- AI-driven resume screening & evaluation without human intervention. 
+- Familiarity with programming languages such as Python or R is a plus. 
+- Strong analytical, problem -solving, and communication skills. 
+- Strong understanding of project management tools (e.g., Jira, Asana, Trello). 
+- Proficient in PC skills and application software like MS Word, Excel, PowerPoint, and Visio 
+- Proficiency in business intelligence tools (Power BI, Tableau) for data reporting and analysis. 
+- Ability to analyze system technical limitations and their impact on solutions. 
+DO’s: 
+- Use open -source libraries and tools 
+- Implement at least 4 AI features 
+- Ensure mobile responsiveness 
+- Focus on user experience 
+- Document your code DON’Ts: 
+ 
+- Don't copy existing solutions 
+- Don't use paid APIs without free tiers 
+- Don't submit incomplete projects 
+- Don't exceed team size limit 
+FAQs: 
+Q: Can we use existing templates? A: Yes, but the core logic and AI features must be original. 
+Q: Are cloud services allowed? A: Yes, use free tiers of any cloud service. 
+Q: Can we use ChatGPT/Claude API? A: Yes, any AI API is allowed including LLMs. 
+Q: Is attendance mandatory for all team members at finals? A: At least one team member must be present. 
+Q: Can we continue development after submission? A: No, the submitted version will be evaluated. 
+ 
+FWC – AI/ML with Fullstack Job Description 
+FWC -HR-TM-01 
+Revision A1–23 Apr 2026 AI/ML with Fullstack JD FWC IT Services Pvt Ltd 
+TM-01 
+ Page 3 of 3 
+FWC IT Services Pvt. Ltd. – Internal and Proprietary 
+Template No. Revision A2, Date 23 April 2026 
+ 
+- AI-powered conversation & voice interaction models for recruitment and candidate screening.Multi -role 
+login system with tailored access for: Management Admin; Senior Manager; HR Recruiter; Employee 
+Personalized dashboards: 
+ 
+- Each user should see their own activity dashboard. 
+- Admins should view individual + company -wide dashboards. 
+- Scalability: Must support 5,000+ employee logins with real-time data processing. 
+- Design: Clean, intuitive UI/UX, optimized for both web and mobile (responsive) access. 
+ 
+Round 2: Selection Process 
+ 
+- The top 80 participants will attend a face -to-face interview with our tech team. 
+- From these, shortlisted candidates will be invited to the FWC office for a managerial discussion. 
+- After the discussions, final winners will be announced and selected candidates will receive an offer to join 
+FWC. 
+ 
+TERMS AND CONDITIONS: 
+ 
+- From the top students, 40 candidates will be selected for a 3-month training program, starting from the 
+date of selection. 
+- After successful completion of the training, they will transition into a full-time role at FWC. 
+- If a candidate is found non-performing, FWC reserves the right to terminate from the training period without 
+notice. 
+- If, during the training, FWC management feels the candidate needs to upgrade skills or obtain certifications, 
+FWC will: Recommend relevant certifications, Reimburse the course expenses upon completion. 
+ Job Location Total Position 
+ Bangalore, India 40 
+ www.fwc.co.in 
+ 
+ 
+ 

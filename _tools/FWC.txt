@@ -1,0 +1,310 @@
+TalentSphere AIAI Powered Human Resource Management
+System
+Hackathon Project Blueprint
+June 2026
+Contents
+1 Project Overview 3
+2 Objectives 3
+3 Technology Stack 3
+3.1 Frontend . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+3.2 Backend . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+3.3 AI Service . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+3.4 Database . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+3.5 Deployment . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+4 System Architecture 4
+5 User Roles 4
+5.1 Management Admin . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+5.2 Senior Manager . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+5.3 HR Recruiter . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+5.4 Employee . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+6 Core HRMS Features 5
+6.1 Employee Management . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+6.2 Attendance Management . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+6.3 Leave Management . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+6.4 Payroll Management . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+6.5 Performance Management . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+7 Onboarding Management 6
+7.1 Candidate Conversion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+7.2 Document Verification . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+7.3 Onboarding Progress Tracker . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+7.4 AI Onboarding Assistant . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+7.5 AI Generated Welcome Kit . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+8 AI Features 7
+8.1 AI Feature 1: Resume Screening . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+8.2 AI Feature 2: Candidate Ranking . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+8.3 AI Feature 3: Video Interview Analysis . . . . . . . . . . . . . . . . . . . . . . . 8
+8.4 AI Feature 4: HR Chatbot . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+8.5 AI Feature 5: Sentiment Analysis . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+1
+8.6 AI Feature 6: Attrition Risk Prediction . . . . . . . . . . . . . . . . . . . . . . . 8
+9 Analytics Dashboard 9
+10 Database Tables 9
+11 Development Roadmap 9
+11.1 Day 1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+11.2 Day 2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+11.3 Day 3 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+11.4 Day 4 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+11.5 Day 5 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+11.6 Day 6 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+11.7 Day 7 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+12 Hackathon Demo Flow 10
+13 Future Enhancements 11
+2
+1 Project Overview
+TalentSphere AI is a next-generation AI-powered Human Resource Management System (HRMS)
+designed to automate recruitment, employee management, onboarding, payroll, performance
+evaluation, and workforce analytics.
+The system combines traditional HRMS functionalities with Artificial Intelligence to reduce
+manual effort and improve decision making.
+2 Objectives
+•Automate HR operations
+•Implement AI-driven recruitment
+•Provide intelligent employee insights
+•Support multiple user roles
+•Deliver scalable architecture
+•Provide responsive web experience
+3 Technology Stack
+3.1 Frontend
+•Next.js
+•React.js
+•Tailwind CSS
+•ShadCN UI
+3.2 Backend
+•Node.js
+•Express.js
+3.3 AI Service
+•Python FastAPI
+•Gemini API
+•HuggingFace Transformers
+•Whisper Speech-to-Text
+3.4 Database
+•PostgreSQL
+3
+3.5 Deployment
+•Vercel
+•Render
+4 System Architecture
+Frontend (Next.js)
+↓
+Backend API (Node.js)
+↓
+PostgreSQL Database
+↓
+AI Service (FastAPI)
+↓
+Gemini API + HuggingFace Models
+5 User Roles
+5.1 Management Admin
+•Manage employees
+•Manage recruiters
+•Company analytics dashboard
+•Payroll monitoring
+•Attrition prediction reports
+5.2 Senior Manager
+•Team performance monitoring
+•Team attendance
+•Team leave approvals
+5.3 HR Recruiter
+•Create job openings
+•Resume screening
+•Candidate ranking
+•Interview management
+•Onboarding management
+4
+5.4 Employee
+•View profile
+•Attendance records
+•Apply leave
+•Download payslips
+•Chat with HR Assistant
+6 Core HRMS Features
+6.1 Employee Management
+•Add Employee
+•Edit Employee
+•Delete Employee
+•Department Assignment
+•Skill Tracking
+6.2 Attendance Management
+•Daily Check-In
+•Daily Check-Out
+•Attendance Reports
+6.3 Leave Management
+•Leave Application
+•Leave Approval
+•Leave History
+6.4 Payroll Management
+•Salary Calculation
+•Tax Deduction
+•PDF Payslip Generation
+6.5 Performance Management
+•KPI Tracking
+•Employee Reviews
+•Performance Reports
+5
+7 Onboarding Management
+The onboarding module automates the process of converting a selected candidate into an em-
+ployee.
+7.1 Candidate Conversion
+•Convert shortlisted candidate to employee
+•Generate Employee ID
+•Assign Department
+•Assign Manager
+•Assign Role
+7.2 Document Verification
+•Aadhaar Verification
+•PAN Verification
+•Educational Certificates
+•Experience Documents
+•Offer Letter Acceptance
+7.3 Onboarding Progress Tracker
+•Pending Tasks
+•Completed Tasks
+•HR Approval Status
+•Joining Status
+7.4 AI Onboarding Assistant
+The AI assistant helps newly joined employees understand company policies and complete on-
+boarding tasks.
+Capabilities:
+•Explain company policies
+•Explain leave policies
+•Explain payroll structure
+•Guide document submission
+•Answer onboarding questions
+6
+Workflow:
+Candidate Selected
+↓
+Offer Letter Generated
+↓
+Document Submission
+↓
+AI Assisted Onboarding
+↓
+Employee Account Created
+↓
+Employee Activated
+7.5 AI Generated Welcome Kit
+Using Gemini API:
+•Personalized Welcome Message
+•Team Introduction
+•Department Overview
+•First Week Checklist
+8 AI Features
+8.1 AI Feature 1: Resume Screening
+Goal: Automatically evaluate resumes without human intervention.
+Workflow:
+Resume Upload
+↓
+Text Extraction
+↓
+Skill Detection
+↓
+Job Matching
+↓
+Candidate Score
+Outputs:
+•Match Percentage
+•Missing Skills
+•Recommendation
+8.2 AI Feature 2: Candidate Ranking
+Automatically rank all candidates.
+Output:
+1. Candidate A - 91
+7
+2. Candidate B - 86
+3. Candidate C - 74
+8.3 AI Feature 3: Video Interview Analysis
+Workflow:
+Candidate Records Video
+↓
+Whisper Transcription
+↓
+Gemini Analysis
+↓
+Score Generation
+Evaluation Parameters:
+•Communication
+•Technical Knowledge
+•Confidence
+•Sentiment
+8.4 AI Feature 4: HR Chatbot
+Capabilities:
+•Leave Queries
+•Payroll Queries
+•HR Policies
+•Employee Information
+8.5 AI Feature 5: Sentiment Analysis
+Analyze employee feedback.
+Output:
+•Positive
+•Neutral
+•Negative
+8.6 AI Feature 6: Attrition Risk Prediction
+Predict employee resignation probability.
+Output:
+•Low Risk
+•Medium Risk
+•High Risk
+8
+9 Analytics Dashboard
+•Employee Count
+•Hiring Trends
+•Attendance Trends
+•Payroll Statistics
+•Attrition Reports
+•Recruitment Funnel
+10 Database Tables
+1. Users
+2. Employees
+3. Attendance
+4. Leave Requests
+5. Payroll
+6. Jobs
+7. Resumes
+8. Interviews
+9. Performance Reviews
+10. Feedback
+11 Development Roadmap
+11.1 Day 1
+•Project setup
+•Database setup
+•Authentication
+•Role management
+11.2 Day 2
+•Employee management
+•Attendance system
+•Leave management
+9
+11.3 Day 3
+•Payroll module
+•Dashboard UI
+11.4 Day 4
+•Resume screening AI
+•Candidate ranking AI
+11.5 Day 5
+•Interview analysis
+•HR chatbot
+11.6 Day 6
+•Sentiment analysis
+•Attrition prediction
+11.7 Day 7
+•Testing
+•Deployment
+•Documentation
+•Demo recording
+12 Hackathon Demo Flow
+1. Login as HR
+2. Upload 20 resumes
+3. Show AI ranking
+4. Launch AI interview analysis
+5. Show chatbot interaction
+6. Switch to Admin dashboard
+7. Show company analytics
+8. Show attrition prediction
+10
+13 Future Enhancements
+•Face Recognition Attendance
+•Voice Controlled HR Assistant
+•Skill Gap Analysis
+•Personalized Learning Recommendations
+11
