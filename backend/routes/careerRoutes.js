@@ -8,6 +8,12 @@ const {
     applyToJob,
     getCandidateApplications,
 } = require('../controllers/careerController');
+const {
+    getCandidateInterview,
+    startCandidateInterview,
+    evaluateCandidateAnswer,
+    finishCandidateInterview,
+} = require('../controllers/candidateInterviewController');
 
 const router = express.Router();
 
@@ -45,5 +51,9 @@ router.get('/jobs', listPublicJobs);
 router.get('/jobs/:id', getPublicJob);
 router.post('/jobs/:id/apply', upload.single('resume'), applyToJob);
 router.get('/applications', getCandidateApplications);
+router.get('/interview/:token', getCandidateInterview);
+router.post('/interview/:token/start', startCandidateInterview);
+router.post('/interview/:token/evaluate-answer', evaluateCandidateAnswer);
+router.post('/interview/:token/finish', finishCandidateInterview);
 
 module.exports = router;

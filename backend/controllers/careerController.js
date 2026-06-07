@@ -1,7 +1,7 @@
 const path = require('path');
 const Job = require('../models/Job');
 const Resume = require('../models/Resume');
-const { applyScreeningToResume } = require('../utils/aiScreening');
+const { enqueueScreening } = require('../utils/screeningQueue');
 
 // @desc    Public: list open jobs
 // @route   GET /api/careers/jobs
@@ -28,7 +28,7 @@ const getPublicJob = async (req, res) => {
     }
 };
 
-// @desc    Public: apply to job and trigger AI screening
+// @desc    Public: apply to job — respond immediately, AI screens in background
 // @route   POST /api/careers/jobs/:id/apply
 const applyToJob = async (req, res) => {
     try {
@@ -51,35 +51,33 @@ const applyToJob = async (req, res) => {
             candidateEmail,
             candidatePhone: candidatePhone || '',
             resumeFile: path.posix.join('uploads', 'resumes', req.file.filename),
-            status: 'pending',
+            status: 'applied',
+            screeningStatus: 'pending',
         });
 
         job.applicants = (job.applicants || 0) + 1;
         await job.save();
 
-        try {
-            const screened = await applyScreeningToResume(resume, job, req.file.path);
-            return res.status(201).json({
-                success: true,
-                message: screened.aiAnalysis?.analysisMode?.includes('gemini')
-                    ? 'Application submitted and ATS-screened (deterministic score + AI explanation)'
-                    : 'Application submitted and ATS-screened (deterministic scoring)',
-                data: screened,
-            });
-        } catch (aiError) {
-            return res.status(201).json({
-                success: true,
-                message: 'Application received. AI screening pending — HR can retry from the dashboard.',
-                aiError: aiError.message,
-                data: resume,
-            });
-        }
+        enqueueScreening(resume._id, job._id, req.file.path);
+
+        return res.status(201).json({
+            success: true,
+            message: 'Application submitted successfully! You will receive updates as your application progresses.',
+            data: {
+                applicationId: resume._id,
+                candidateName: resume.candidateName,
+                candidateEmail: resume.candidateEmail,
+                jobTitle: job.title,
+                status: 'applied',
+                screeningStatus: 'pending',
+            },
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// @desc    Public: get candidate applications by email
+// @desc    Public: get candidate applications by email (no ATS scores exposed)
 // @route   GET /api/careers/applications
 const getCandidateApplications = async (req, res) => {
     try {
@@ -92,7 +90,21 @@ const getCandidateApplications = async (req, res) => {
             .populate('job', 'title department status')
             .sort({ createdAt: -1 });
 
-        res.status(200).json({ success: true, count: applications.length, data: applications });
+        const sanitized = applications.map((app) => ({
+            _id: app._id,
+            candidateName: app.candidateName,
+            candidateEmail: app.candidateEmail,
+            status: app.status,
+            screeningStatus: app.screeningStatus,
+            createdAt: app.createdAt,
+            job: app.job,
+            hasInterview: Boolean(app.interviewToken),
+            interviewReady: app.status === 'shortlisted' && Boolean(app.interviewToken),
+            interviewCompleted: app.status === 'interviewed',
+            interviewUrl: app.interviewToken ? `/careers/interview/${app.interviewToken}` : null,
+        }));
+
+        res.status(200).json({ success: true, count: sanitized.length, data: sanitized });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

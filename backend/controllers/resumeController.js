@@ -3,40 +3,50 @@ const Resume = require('../models/Resume');
 const Job = require('../models/Job');
 const { applyScreeningToResume } = require('../utils/aiScreening');
 const { compareCandidates } = require('../utils/aiCompare');
+const { screenPendingForJob } = require('../utils/screeningQueue');
+const { assignInterviewToCandidate } = require('../utils/interviewAssignment');
 
 const buildRecruitmentStats = (resumes) => {
     const stats = {
         applicationsReceived: resumes.length,
-        aiShortlisted: 0,
-        needsReview: 0,
+        screeningCompleted: 0,
+        screeningPending: 0,
+        shortlisted: 0,
         rejected: 0,
-        pendingScreening: 0,
+        interviewed: 0,
         highlyRecommended: 0,
         recommended: 0,
+        needsReview: 0,
+        // legacy aliases
+        aiShortlisted: 0,
+        pendingScreening: 0,
     };
 
     resumes.forEach((resume) => {
-        if (resume.status === 'pending' || !resume.aiAnalysis?.score) {
+        const screeningDone = resume.screeningStatus === 'completed' && resume.aiAnalysis?.score > 0;
+        if (!screeningDone) {
+            stats.screeningPending += 1;
             stats.pendingScreening += 1;
-            return;
+        } else {
+            stats.screeningCompleted += 1;
         }
+
+        if (['shortlisted', 'interview', 'interviewed'].includes(resume.status)) {
+            stats.shortlisted += 1;
+        }
+        if (resume.status === 'rejected') stats.rejected += 1;
+        if (resume.status === 'interviewed' || resume.status === 'selected') stats.interviewed += 1;
 
         const value = resume.aiAnalysis?.recommendation || '';
         if (value === 'Highly Recommended') {
             stats.highlyRecommended += 1;
             stats.aiShortlisted += 1;
-            return;
-        }
-        if (value === 'Recommended') {
+        } else if (value === 'Recommended') {
             stats.recommended += 1;
             stats.aiShortlisted += 1;
-            return;
+        } else if (value === 'Needs Review') {
+            stats.needsReview += 1;
         }
-        if (value === 'Not Recommended') {
-            stats.rejected += 1;
-            return;
-        }
-        stats.needsReview += 1;
     });
 
     return stats;
@@ -125,21 +135,55 @@ const getResumeStats = async (req, res) => {
 const updateResumeStatus = async (req, res) => {
     try {
         const { status } = req.body;
-        if (!['screened', 'shortlisted', 'rejected', 'interview', 'selected', 'pending'].includes(status)) {
+        if (!['screened', 'shortlisted', 'rejected', 'interview', 'interviewed', 'selected', 'pending'].includes(status)) {
             return res.status(400).json({ success: false, message: 'Invalid status' });
         }
 
-        const resume = await Resume.findByIdAndUpdate(
-            req.params.id,
-            { status },
-            { new: true }
-        ).populate('job', 'title department');
-
+        let resume = await Resume.findById(req.params.id).populate('job');
         if (!resume) {
             return res.status(404).json({ success: false, message: 'Application not found' });
         }
 
+        resume.status = status;
+        await resume.save();
+
+        if (status === 'shortlisted' && resume.job) {
+            try {
+                await assignInterviewToCandidate(resume, resume.job);
+            } catch (err) {
+                console.error('Interview assignment failed:', err.message);
+            }
+        }
+
         res.status(200).json({ success: true, data: resume });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    HR/Admin: screen all pending applications for a job
+// @route   POST /api/resumes/screen-pending
+const screenPendingResumes = async (req, res) => {
+    try {
+        const { jobId } = req.body;
+        if (!jobId) {
+            return res.status(400).json({ success: false, message: 'jobId is required' });
+        }
+
+        const job = await Job.findById(jobId);
+        if (!job) {
+            return res.status(404).json({ success: false, message: 'Job not found' });
+        }
+
+        const queued = await screenPendingForJob(jobId);
+
+        res.status(200).json({
+            success: true,
+            message: queued > 0
+                ? `AI screening queued for ${queued} pending application(s)`
+                : 'All applications are already screened',
+            data: { queued },
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -197,25 +241,37 @@ const autoShortlist = async (req, res) => {
             .sort({ 'aiAnalysis.score': -1 })
             .limit(limit);
 
-        const ids = candidates.map((c) => c._id);
-        await Resume.updateMany(
-            { _id: { $in: ids } },
-            { status: 'shortlisted' }
-        );
+        const interviewResults = [];
+        for (const candidate of candidates) {
+            try {
+                const { token } = await assignInterviewToCandidate(candidate, job);
+                interviewResults.push({
+                    id: candidate._id,
+                    name: candidate.candidateName,
+                    score: candidate.aiAnalysis?.score,
+                    recommendation: candidate.aiAnalysis?.recommendation,
+                    interviewToken: token,
+                });
+            } catch (err) {
+                candidate.status = 'shortlisted';
+                await candidate.save();
+                interviewResults.push({
+                    id: candidate._id,
+                    name: candidate.candidateName,
+                    score: candidate.aiAnalysis?.score,
+                    error: err.message,
+                });
+            }
+        }
 
         res.status(200).json({
             success: true,
-            message: `${candidates.length} candidate(s) auto-shortlisted (score ≥ ${threshold})`,
+            message: `${interviewResults.length} candidate(s) shortlisted with AI interview assigned (score ≥ ${threshold})`,
             data: {
-                shortlisted: candidates.length,
+                shortlisted: interviewResults.length,
                 threshold,
                 topN: limit,
-                candidates: candidates.map((c) => ({
-                    id: c._id,
-                    name: c.candidateName,
-                    score: c.aiAnalysis?.score,
-                    recommendation: c.aiAnalysis?.recommendation,
-                })),
+                candidates: interviewResults,
             },
         });
     } catch (error) {
@@ -255,6 +311,7 @@ module.exports = {
     getResumeById,
     getResumeStats,
     updateResumeStatus,
+    screenPendingResumes,
     rescreenResume,
     autoShortlist,
     compareResumeCandidates,

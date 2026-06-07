@@ -6,15 +6,13 @@ import json
 import re
 from typing import List, Tuple, Dict, Any
 
-# Category max points (sum = 100)
+# Hybrid scoring model (sum = 100) — deterministic, reproducible
 WEIGHTS = {
-    "skills": 35,
-    "experience": 22,
-    "projects": 18,
-    "education": 8,
-    "certifications": 7,
-    "achievements": 5,
-    "resume_quality": 5,
+    "skills": 35,           # exact + semantic skill match
+    "semantic": 25,         # resume vs JD embedding similarity
+    "experience": 15,       # years + role relevance
+    "education": 10,        # degree alignment
+    "projects": 15,         # projects + certifications
 }
 
 SKILL_ALIASES: Dict[str, List[str]] = {
@@ -87,6 +85,48 @@ def parse_skills(required_skills: str) -> List[str]:
         return []
     parts = re.split(r"[,;\n|]+", required_skills)
     return [p.strip() for p in parts if p.strip()]
+
+
+def extract_tech_terms_from_text(text: str) -> List[str]:
+    """Pull technology keywords from job title, description, and requirements."""
+    found, seen = [], set()
+    if not text:
+        return found
+    for pattern in COMMON_TECH_PATTERNS:
+        for m in re.finditer(pattern, text, re.I):
+            term = m.group(0).strip()
+            key = term.lower()
+            if key not in seen and len(term) > 1:
+                seen.add(key)
+                found.append(term)
+    return found
+
+
+def build_required_skills_list(
+    required_skills: str,
+    job_title: str = "",
+    job_description: str = "",
+    requirements: str = "",
+) -> List[str]:
+    """Merge explicit skills with JD-derived terms so scoring varies per job."""
+    combined: List[str] = []
+    seen = set()
+
+    for source in (required_skills, requirements):
+        for skill in parse_skills(source):
+            key = skill.lower()
+            if key not in seen:
+                seen.add(key)
+                combined.append(skill)
+
+    jd_blob = f"{job_title} {job_description} {requirements}"
+    for term in extract_tech_terms_from_text(jd_blob):
+        key = term.lower()
+        if key not in seen:
+            seen.add(key)
+            combined.append(term)
+
+    return combined[:30]
 
 
 def skill_search_terms(skill: str) -> List[str]:
@@ -263,15 +303,30 @@ def estimate_education(resume_text: str) -> str:
     return "Not specified"
 
 
-def jd_required_years(job_description: str) -> int:
+def jd_required_years(job_description: str, experience_min: int = 0) -> int:
+    if experience_min and experience_min > 0:
+        return int(experience_min)
     m = re.search(r"(\d+)\+?\s*(?:years?|yrs?)", job_description or "", re.I)
     return int(m.group(1)) if m else 2
 
 
-def score_skills(resume_text: str, required: List[str], matched: List[str]) -> Tuple[float, str]:
+def score_skills(
+    resume_text: str,
+    required: List[str],
+    matched: List[str],
+    job_title: str = "",
+    job_description: str = "",
+) -> Tuple[float, str]:
     max_pts = WEIGHTS["skills"]
     if not required:
-        return max_pts * 0.6, "No required skills listed on job — partial credit applied"
+        jd_terms = extract_tech_terms_from_text(f"{job_title} {job_description}")
+        resume_terms = set(t.lower() for t in extract_technical_skills_from_resume(resume_text))
+        if jd_terms:
+            overlap = sum(1 for t in jd_terms if t.lower() in resume_text.lower() or t.lower() in resume_terms)
+            ratio = overlap / len(jd_terms)
+            total = min(max_pts, round(ratio * max_pts * 0.85, 1))
+            return total, f"{overlap}/{len(jd_terms)} JD tech terms found on resume"
+        return max_pts * 0.35, "Limited JD skill signals — scored on resume tech keywords only"
 
     ratio = len(matched) / len(required)
     base = ratio * (max_pts * 0.75)  # up to ~26 for full match
@@ -286,24 +341,51 @@ def score_skills(resume_text: str, required: List[str], matched: List[str]) -> T
     return total, note
 
 
-def score_experience(resume_text: str, job_title: str, job_description: str) -> Tuple[float, str]:
+def score_semantic_similarity(resume_text: str, job_description: str, job_title: str = "") -> Tuple[float, str]:
+    """Sentence-transformer cosine similarity: resume content vs job description."""
+    max_pts = WEIGHTS["semantic"]
+    model = get_embedding_model()
+    if model is None or not (job_description or job_title):
+        return max_pts * 0.4, "Semantic model unavailable — partial JD match credit"
+
+    try:
+        from sentence_transformers import util
+        jd_text = f"{job_title}. {job_description}"[:3000]
+        resume_sample = resume_text[:4000]
+        jd_emb = model.encode(jd_text, convert_to_tensor=True)
+        resume_emb = model.encode(resume_sample, convert_to_tensor=True)
+        similarity = float(util.cos_sim(jd_emb, resume_emb)[0][0])
+        similarity = max(0.0, min(1.0, similarity))
+        pts = round(similarity * max_pts, 1)
+        pct = int(similarity * 100)
+        return pts, f"Resume–JD semantic similarity {pct}% (embedding match)"
+    except Exception as exc:
+        return max_pts * 0.35, f"Semantic scoring fallback ({exc})"
+
+
+def score_experience(
+    resume_text: str,
+    job_title: str,
+    job_description: str,
+    experience_min: int = 0,
+) -> Tuple[float, str]:
     max_pts = WEIGHTS["experience"]
     years_label, years = estimate_years_experience(resume_text)
-    required = jd_required_years(job_description)
+    required = jd_required_years(job_description, experience_min)
 
-    # Years component (0-12 of 22)
+    # Years component (0-8 of 15)
     if years == 0:
-        years_pts = 3
+        years_pts = 2
     elif years >= required + 3:
-        years_pts = 12
+        years_pts = 8
     elif years >= required:
-        years_pts = 10
+        years_pts = 7
     elif years >= max(1, required - 1):
-        years_pts = 6
+        years_pts = 4
     else:
-        years_pts = 3
+        years_pts = 2
 
-    # Role relevance (0-6)
+    # Role relevance (0-4)
     title_tokens = set(re.findall(r"[a-z]{3,}", job_title.lower()))
     roles = extract_role_titles(resume_text)
     role_pts = 0
@@ -312,19 +394,19 @@ def score_experience(resume_text: str, job_title: str, job_description: str) -> 
         role_tokens = set(re.findall(r"[a-z]{3,}", role.lower()))
         overlap = len(title_tokens & role_tokens)
         if overlap > role_pts:
-            role_pts = min(6, overlap * 2)
+            role_pts = min(4, overlap * 2)
             best_role = role
     if not best_role and any(k in resume_text.lower() for k in ["developer", "engineer", "intern"]):
-        role_pts = 2
+        role_pts = 1
 
-    # Progression / industry (0-4)
+    # Progression signals (0-3)
     prog_pts = 0
     prog_signals = []
     for signal in ["senior", "lead", "manager", "promoted", "mentor", "hackathon", "intern to"]:
         if signal in resume_text.lower():
             prog_pts += 1
             prog_signals.append(signal)
-    prog_pts = min(4, prog_pts)
+    prog_pts = min(3, prog_pts)
 
     total = min(max_pts, years_pts + role_pts + prog_pts)
     note = f"{years_label} (role needs ~{required} yrs)"
@@ -457,40 +539,42 @@ def calculate_comprehensive_scores(
     job_description: str,
     required_skills: List[str],
     matched_skills: List[str],
+    experience_min: int = 0,
 ) -> Dict[str, Any]:
-    skills_pts, skills_note = score_skills(resume_text, required_skills, matched_skills)
-    exp_pts, exp_note = score_experience(resume_text, job_title, job_description)
-    proj_pts, proj_note = score_projects(resume_text, job_description, matched_skills)
+    skills_pts, skills_note = score_skills(
+        resume_text, required_skills, matched_skills, job_title, job_description
+    )
+    semantic_pts, semantic_note = score_semantic_similarity(resume_text, job_description, job_title)
+    exp_pts, exp_note = score_experience(resume_text, job_title, job_description, experience_min)
     edu_pts, edu_note = score_education(resume_text, job_description)
+
+    proj_pts, proj_note = score_projects(resume_text, job_description, matched_skills)
     cert_pts, cert_note = score_certifications(resume_text, required_skills)
-    ach_pts, ach_note = score_achievements(resume_text)
-    qual_pts, qual_note = score_resume_quality(resume_text)
+    proj_cert_pts = min(WEIGHTS["projects"], round(proj_pts * 0.65 + cert_pts * 0.35, 1))
+    proj_cert_note = f"{proj_note}; {cert_note}"
 
     final_score = int(min(100, round(
-        skills_pts + exp_pts + proj_pts + edu_pts + cert_pts + ach_pts + qual_pts
+        skills_pts + semantic_pts + exp_pts + edu_pts + proj_cert_pts
     )))
 
     years_label, _ = estimate_years_experience(resume_text)
     education = estimate_education(resume_text)
 
     score_breakdown = [
-        {"category": "Skills Match", "score": skills_pts, "max": WEIGHTS["skills"], "note": skills_note},
-        {"category": "Relevant Experience", "score": exp_pts, "max": WEIGHTS["experience"], "note": exp_note},
-        {"category": "Projects & Quality", "score": proj_pts, "max": WEIGHTS["projects"], "note": proj_note},
+        {"category": "Skill Match", "score": skills_pts, "max": WEIGHTS["skills"], "note": skills_note},
+        {"category": "Semantic JD Fit", "score": semantic_pts, "max": WEIGHTS["semantic"], "note": semantic_note},
+        {"category": "Experience Relevance", "score": exp_pts, "max": WEIGHTS["experience"], "note": exp_note},
         {"category": "Education Alignment", "score": edu_pts, "max": WEIGHTS["education"], "note": edu_note},
-        {"category": "Certifications", "score": cert_pts, "max": WEIGHTS["certifications"], "note": cert_note},
-        {"category": "Achievements & Impact", "score": ach_pts, "max": WEIGHTS["achievements"], "note": ach_note},
-        {"category": "Resume Quality", "score": qual_pts, "max": WEIGHTS["resume_quality"], "note": qual_note},
+        {"category": "Projects & Certifications", "score": proj_cert_pts, "max": WEIGHTS["projects"], "note": proj_cert_note},
     ]
 
     return {
         "skill_score": skills_pts,
+        "semantic_score": semantic_pts,
         "experience_score": exp_pts,
-        "projects_score": proj_pts,
+        "projects_score": proj_cert_pts,
         "education_score": edu_pts,
         "certifications_score": cert_pts,
-        "achievements_score": ach_pts,
-        "resume_quality_score": qual_pts,
         "final_score": final_score,
         "score_breakdown": score_breakdown,
         "years_of_experience": years_label,
@@ -587,8 +671,8 @@ def build_specific_fallback_explanation(
         strengths.append(f"Quantifiable impact or recognition: {achievements[0][:100]}.")
 
     # Resume quality
-    if scores["resume_quality_score"] < 3:
-        weaknesses.append("Resume structure is incomplete — missing key sections that help assess fit quickly.")
+    if scores.get("semantic_score", 0) < WEIGHTS["semantic"] * 0.4:
+        weaknesses.append("Resume content shows limited semantic alignment with the job description beyond keyword matching.")
 
     missing = context.get("missing_skills", [])
     if missing and len(weaknesses) < 4:
@@ -620,6 +704,7 @@ def build_specific_fallback_explanation(
     questions.append(f"What makes you a strong fit for {job_title} beyond your resume keywords?")
     questions.append("Describe a challenging technical problem you solved and how you measured success.")
 
+    matched = proficient + listed_only
     recruiter_insights = build_recruiter_insights(job_title, scores, context, matched, missing)
 
     return {
@@ -765,12 +850,11 @@ def merge_screening_result(
         "candidate_name": explanation.get("candidate_name", ""),
         "technical_skills_found": technical_skills_found,
         "skill_score": scores["skill_score"],
+        "semantic_score": scores.get("semantic_score", 0),
         "experience_score": scores["experience_score"],
         "projects_score": scores["projects_score"],
         "education_score": scores["education_score"],
         "certifications_score": scores.get("certifications_score", 0),
-        "achievements_score": scores.get("achievements_score", 0),
-        "resume_quality_score": scores.get("resume_quality_score", 0),
         "final_score": final_score,
         "score_breakdown": scores.get("score_breakdown", []),
         "recruiter_insights": explanation.get("recruiter_insights", ""),
@@ -786,16 +870,25 @@ def run_screening_pipeline(
     candidate_name: str = "",
     call_gemini_fn=None,
     parse_json_fn=None,
+    requirements: str = "",
+    experience_min: int = 0,
+    education: str = "",
 ) -> Dict[str, Any]:
-    required_list = parse_skills(required_skills)
+    required_list = build_required_skills_list(
+        required_skills, job_title, job_description, requirements
+    )
     matched, missing, _ = match_required_skills(resume_text, required_list)
     technical_found = extract_technical_skills_from_resume(resume_text)
     for s in matched:
         if s not in technical_found:
             technical_found.insert(0, s)
 
+    enriched_jd = job_description
+    if education and education.lower() not in (job_description or "").lower():
+        enriched_jd = f"{job_description}\nEducation preference: {education}"
+
     scores = calculate_comprehensive_scores(
-        resume_text, job_title, job_description, required_list, matched
+        resume_text, job_title, enriched_jd, required_list, matched, experience_min
     )
     context = build_evaluation_context(resume_text, job_title, matched, missing, scores)
 

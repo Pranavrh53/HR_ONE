@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { Blob } = require('buffer');
+const { buildJobScreeningContext } = require('./jobScreeningContext');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -29,6 +30,7 @@ const mapAiAnalysis = (result) => ({
     interviewQuestions: result.interview_questions || [],
     analysisMode: result.analysis_mode || 'deterministic',
     skillScore: result.skill_score ?? null,
+    semanticScore: result.semantic_score ?? null,
     experienceScore: result.experience_score ?? null,
     projectsScore: result.projects_score ?? null,
     educationScore: result.education_score ?? null,
@@ -40,15 +42,23 @@ const mapAiAnalysis = (result) => ({
     aiInsights: result.recruiter_insights || result.ai_insights || '',
 });
 
-const callAiScreening = async ({ filePath, fileName, job }) => {
+const callAiScreening = async ({ filePath, fileName, job, skipGemini = false }) => {
+    const ctx = buildJobScreeningContext(job);
     const fileBuffer = fs.readFileSync(filePath);
     const formData = new FormData();
     const blob = new Blob([fileBuffer], { type: 'application/pdf' });
 
     formData.append('file', blob, fileName || path.basename(filePath));
-    formData.append('job_title', job.title);
-    formData.append('job_description', job.description || '');
-    formData.append('required_skills', (job.skills || []).join(', '));
+    formData.append('job_title', ctx.jobTitle);
+    formData.append('job_description', ctx.jobDescription);
+    formData.append('required_skills', ctx.requiredSkills);
+    formData.append('requirements', ctx.requirements);
+    formData.append('experience_min', ctx.experienceMin);
+    formData.append('experience_max', ctx.experienceMax);
+    formData.append('education', ctx.education);
+    if (skipGemini) {
+        formData.append('skip_gemini', 'true');
+    }
 
     const response = await fetch(`${AI_SERVICE_URL}/screen-resume`, {
         method: 'POST',
@@ -64,7 +74,7 @@ const callAiScreening = async ({ filePath, fileName, job }) => {
     return data;
 };
 
-const applyScreeningToResume = async (resume, job, filePath) => {
+const applyScreeningToResume = async (resume, job, filePath, options = {}) => {
     const absolutePath = path.isAbsolute(filePath)
         ? filePath
         : path.join(__dirname, '..', filePath.replace(/^\/+/, ''));
@@ -73,11 +83,15 @@ const applyScreeningToResume = async (resume, job, filePath) => {
         filePath: absolutePath,
         fileName: path.basename(resume.resumeFile),
         job,
+        skipGemini: Boolean(options.skipGemini),
     });
 
     resume.extractedText = aiResult.extracted_text || resume.extractedText || '';
     resume.aiAnalysis = mapAiAnalysis(aiResult);
-    resume.status = 'screened';
+    resume.screeningStatus = 'completed';
+    if (resume.status !== 'shortlisted' && resume.status !== 'interviewed' && resume.status !== 'selected') {
+        resume.status = 'screened';
+    }
     resume.screenedAt = new Date();
     await resume.save();
 

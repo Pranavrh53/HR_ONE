@@ -50,6 +50,7 @@ const resumeSchema = new mongoose.Schema({
         interviewQuestions: [{ type: String }],
         analysisMode: { type: String, default: 'deterministic' },
         skillScore: { type: Number },
+        semanticScore: { type: Number },
         experienceScore: { type: Number },
         projectsScore: { type: Number },
         educationScore: { type: Number },
@@ -66,12 +67,28 @@ const resumeSchema = new mongoose.Schema({
         aiInsights: { type: String, default: '' },
         rank: { type: Number },
     },
-    status: {
+    screeningStatus: {
         type: String,
-        enum: ['pending', 'screened', 'shortlisted', 'rejected', 'interview', 'selected'],
+        enum: ['pending', 'in_progress', 'completed', 'failed'],
         default: 'pending',
     },
+    status: {
+        type: String,
+        enum: ['pending', 'applied', 'screened', 'shortlisted', 'rejected', 'interview', 'interviewed', 'selected'],
+        default: 'applied',
+    },
     screenedAt: {
+        type: Date,
+    },
+    interviewToken: {
+        type: String,
+        default: '',
+    },
+    interviewSession: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'InterviewSession',
+    },
+    interviewAssignedAt: {
         type: Date,
     },
     uploadedBy: {
