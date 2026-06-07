@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const userSchema = new mongoose.Schema({
     name: {
@@ -22,7 +23,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['admin', 'senior_manager', 'hr', 'employee'],
+        enum: ['admin', 'senior_manager', 'hr', 'employee', 'candidate'],
         default: 'employee',
     },
     phone: {
@@ -45,6 +46,8 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
 }, {
     timestamps: true,
 });

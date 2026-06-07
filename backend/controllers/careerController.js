@@ -1,7 +1,10 @@
 const path = require('path');
 const Job = require('../models/Job');
 const Resume = require('../models/Resume');
+const OfferLetter = require('../models/OfferLetter');
+const HiringDecision = require('../models/HiringDecision');
 const { enqueueScreening } = require('../utils/screeningQueue');
+const { sendApplicationConfirmation } = require('../utils/emailService');
 
 // @desc    Public: list open jobs
 // @route   GET /api/careers/jobs
@@ -60,6 +63,13 @@ const applyToJob = async (req, res) => {
 
         enqueueScreening(resume._id, job._id, req.file.path);
 
+        // Send confirmation email (non-blocking)
+        sendApplicationConfirmation({
+            candidateName: resume.candidateName,
+            candidateEmail: resume.candidateEmail,
+            jobTitle: job.title,
+        }).catch(err => console.error('Email error:', err.message));
+
         return res.status(201).json({
             success: true,
             message: 'Application submitted successfully! You will receive updates as your application progresses.',
@@ -88,6 +98,9 @@ const getCandidateApplications = async (req, res) => {
 
         const applications = await Resume.find({ candidateEmail: String(email).toLowerCase() })
             .populate('job', 'title department status')
+            .populate('hiringDecision')
+            .populate('offerLetter')
+            .populate('onboardingRecord')
             .sort({ createdAt: -1 });
 
         const sanitized = applications.map((app) => ({
@@ -100,11 +113,58 @@ const getCandidateApplications = async (req, res) => {
             job: app.job,
             hasInterview: Boolean(app.interviewToken),
             interviewReady: app.status === 'shortlisted' && Boolean(app.interviewToken),
-            interviewCompleted: app.status === 'interviewed',
+            interviewCompleted: app.status === 'interviewed' || app.status === 'awaiting_hr_review',
             interviewUrl: app.interviewToken ? `/careers/interview/${app.interviewToken}` : null,
+            hiringScore: app.hiringScore || 0,
+            hiringRecommendation: app.hiringRecommendation || '',
+            offerStatus: app.offerLetter?.status || '',
+            offerLetterId: app.offerLetter?._id || null,
+            offerFileUrl: app.offerLetter?.filePath ? `/uploads/offers/${path.basename(app.offerLetter.filePath)}` : null,
+            onboardingStatus: app.onboardingRecord?.status || '',
         }));
 
         res.status(200).json({ success: true, count: sanitized.length, data: sanitized });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Candidate: list offer letters and onboarding status
+// @route   GET /api/careers/my-offers
+const getCandidateOffers = async (req, res) => {
+    try {
+        const email = req.user.email.toLowerCase();
+        const applications = await Resume.find({ candidateEmail: email })
+            .populate('job', 'title department location')
+            .populate('hiringDecision')
+            .populate('offerLetter')
+            .populate('onboardingRecord')
+            .sort({ createdAt: -1 });
+
+        const offers = applications
+            .filter((app) => app.offerLetter)
+            .map((app) => ({
+                applicationId: app._id,
+                candidateName: app.candidateName,
+                candidateEmail: app.candidateEmail,
+                job: app.job,
+                hiringDecision: app.hiringDecision,
+                hiringScore: app.hiringScore || 0,
+                hiringRecommendation: app.hiringRecommendation || '',
+                offer: {
+                    _id: app.offerLetter._id,
+                    status: app.offerLetter.status,
+                    salary: app.offerLetter.salary,
+                    joiningDate: app.offerLetter.joiningDate,
+                    reportingManager: app.offerLetter.reportingManager,
+                    companyDetails: app.offerLetter.companyDetails,
+                    fileUrl: app.offerLetter.filePath ? `/uploads/offers/${path.basename(app.offerLetter.filePath)}` : null,
+                    generatedAt: app.offerLetter.generatedAt,
+                },
+                onboardingStatus: app.onboardingRecord?.status || '',
+            }));
+
+        res.status(200).json({ success: true, count: offers.length, data: offers });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -115,4 +175,5 @@ module.exports = {
     getPublicJob,
     applyToJob,
     getCandidateApplications,
+    getCandidateOffers,
 };

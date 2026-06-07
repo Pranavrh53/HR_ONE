@@ -43,12 +43,16 @@ const interviewSessionSchema = new mongoose.Schema({
     resumeScore: { type: Number, default: 0 },
     interviewScore: { type: Number, default: 0 },
     finalScore: { type: Number, default: 0 },
+    hiringDecision: { type: mongoose.Schema.Types.ObjectId, ref: 'HiringDecision', default: null },
     report: {
         communicationScore: { type: Number, default: 0 },
         technicalScore: { type: Number, default: 0 },
         problemSolvingScore: { type: Number, default: 0 },
         behavioralScore: { type: Number, default: 0 },
         overallScore: { type: Number, default: 0 },
+        hiringScore: { type: Number, default: 0 },
+        hiringRecommendation: { type: String, default: '' },
+        hiringStatus: { type: String, default: '' },
         strengths: [{ type: String }],
         weaknesses: [{ type: String }],
         recommendation: {

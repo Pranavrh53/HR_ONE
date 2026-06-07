@@ -1,6 +1,8 @@
 const InterviewSession = require('../models/InterviewSession');
 const Resume = require('../models/Resume');
+const Job = require('../models/Job');
 const axios = require('axios');
+const { createOrUpdateHiringDecision } = require('../utils/hiringWorkflow');
 
 const AI_SERVICE = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -45,11 +47,12 @@ exports.startCandidateInterview = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Interview already completed' });
         }
 
-        session.status = 'in_progress';
-        session.startedAt = new Date();
-        await session.save();
-
-        await Resume.findByIdAndUpdate(session.candidate, { status: 'interview' });
+        if (session.status !== 'in_progress') {
+            session.status = 'in_progress';
+            session.startedAt = new Date();
+            await session.save();
+            await Resume.findByIdAndUpdate(session.candidate, { status: 'interview' });
+        }
 
         res.json({
             success: true,
@@ -134,7 +137,22 @@ exports.finishCandidateInterview = async (req, res) => {
             summary: report.summary || '',
         };
         await session.save();
-        await Resume.findByIdAndUpdate(session.candidate, { status: 'interviewed' });
+
+        // Auto-create HiringDecision so the post-interview pipeline is active
+        const resume = await Resume.findById(session.candidate);
+        const job = await Job.findById(session.job);
+        if (resume && job) {
+            await createOrUpdateHiringDecision({
+                session,
+                resume,
+                job,
+                interviewScore,
+                report: session.report,
+            });
+        } else {
+            // Fallback: just mark as interviewed
+            await Resume.findByIdAndUpdate(session.candidate, { status: 'interviewed' });
+        }
 
         res.json({ success: true, data: { finalScore, interviewScore, recommendation: session.report.recommendation } });
     } catch (err) {

@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 const InterviewSession = require('../models/InterviewSession');
 const { buildJobScreeningContext } = require('./jobScreeningContext');
+const { sendShortlistNotification } = require('./emailService');
 
 const AI_SERVICE = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -42,11 +43,22 @@ const assignInterviewToCandidate = async (resume, job) => {
         accessToken: token,
     });
 
+    const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
     resume.interviewSession = session._id;
     resume.interviewToken = token;
     resume.status = 'shortlisted';
     resume.interviewAssignedAt = new Date();
+    resume.interviewDeadline = deadline;
     await resume.save();
+
+    // Send shortlist notification email (non-blocking)
+    sendShortlistNotification({
+        candidateName: resume.candidateName,
+        candidateEmail: resume.candidateEmail,
+        jobTitle: job.title,
+        interviewToken: token,
+        deadline,
+    }).catch(err => console.error('Email error:', err.message));
 
     return { session, token };
 };

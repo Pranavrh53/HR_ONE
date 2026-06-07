@@ -14,6 +14,13 @@ const buildRecruitmentStats = (resumes) => {
         shortlisted: 0,
         rejected: 0,
         interviewed: 0,
+        awaitingHrReview: 0,
+        selected: 0,
+        offerGenerated: 0,
+        offerAccepted: 0,
+        offerDeclined: 0,
+        onboarding: 0,
+        employees: 0,
         highlyRecommended: 0,
         recommended: 0,
         needsReview: 0,
@@ -36,6 +43,13 @@ const buildRecruitmentStats = (resumes) => {
         }
         if (resume.status === 'rejected') stats.rejected += 1;
         if (resume.status === 'interviewed' || resume.status === 'selected') stats.interviewed += 1;
+        if (resume.status === 'awaiting_hr_review') stats.awaitingHrReview += 1;
+        if (resume.status === 'selected') stats.selected += 1;
+        if (resume.status === 'offer_generated') stats.offerGenerated += 1;
+        if (resume.status === 'offer_accepted') stats.offerAccepted += 1;
+        if (resume.status === 'offer_declined') stats.offerDeclined += 1;
+        if (resume.status === 'onboarding') stats.onboarding += 1;
+        if (resume.status === 'employee') stats.employees += 1;
 
         const value = resume.aiAnalysis?.recommendation || '';
         if (value === 'Highly Recommended') {
@@ -135,7 +149,7 @@ const getResumeStats = async (req, res) => {
 const updateResumeStatus = async (req, res) => {
     try {
         const { status } = req.body;
-        if (!['screened', 'shortlisted', 'rejected', 'interview', 'interviewed', 'selected', 'pending'].includes(status)) {
+        if (!['screened', 'shortlisted', 'rejected', 'interview', 'interviewed', 'awaiting_hr_review', 'top_candidate', 'recommended', 'needs_hr_review', 'not_recommended', 'selected', 'offer_generated', 'offer_accepted', 'offer_declined', 'onboarding', 'employee', 'pending'].includes(status)) {
             return res.status(400).json({ success: false, message: 'Invalid status' });
         }
 

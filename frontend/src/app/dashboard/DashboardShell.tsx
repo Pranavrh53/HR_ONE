@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
     LayoutDashboard, Users, Clock, CalendarDays, Briefcase, FileText,
     BarChart3, MessageSquare, Brain, LogOut, Menu, X, ChevronDown,
-    Settings, Bell, Search, UserCircle, Mic
+    Settings, Bell, Search, UserCircle, Mic, Target, DollarSign, Rocket
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -26,12 +26,15 @@ const navItems: NavItem[] = [
     { label: "Employees", href: "/dashboard/employees", icon: Users, roles: ["admin", "hr", "senior_manager"] },
     { label: "Attendance", href: "/dashboard/attendance", icon: Clock, roles: ["admin", "hr", "senior_manager", "employee"] },
     { label: "Leave Management", href: "/dashboard/leaves", icon: CalendarDays, roles: ["admin", "hr", "senior_manager", "employee"] },
+    { label: "Onboarding", href: "/dashboard/onboarding", icon: Rocket, roles: ["admin", "hr", "employee"] },
+    { label: "Payroll", href: "/dashboard/payroll", icon: DollarSign, roles: ["admin", "hr", "employee"] },
     { label: "Career Portal", href: "/careers", icon: Briefcase, roles: ["employee"] },
     { label: "Track Application", href: "/careers/status", icon: FileText, roles: ["admin", "hr", "senior_manager", "employee"] },
-    { label: "Recruitment", href: "/dashboard/recruitment", icon: Briefcase, roles: ["admin", "hr"], badge: "AI" },
-    { label: "Bulk Resume Import", href: "/dashboard/resume-screening", icon: FileText, roles: ["admin", "hr"] },
-    { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3, roles: ["admin", "senior_manager"] },
-    { label: "HR Chatbot", href: "/dashboard/chatbot", icon: MessageSquare, roles: ["admin", "hr", "employee"], badge: "AI" },
+    { label: "Recruitment", href: "/dashboard/recruitment", icon: Briefcase, roles: ["hr"] },
+    { label: "Hiring Decisions", href: "/dashboard/hiring", icon: Target, roles: ["admin", "hr"] },
+    { label: "Bulk Resume Import", href: "/dashboard/resume-screening", icon: FileText, roles: ["hr"] },
+    { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3, roles: ["admin", "hr", "senior_manager"] },
+    { label: "HR Assistant", href: "/dashboard/chat", icon: MessageSquare, roles: ["admin", "hr", "employee", "senior_manager"] },
 ];
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -42,20 +45,30 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     const [collapsed, setCollapsed] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-    useEffect(() => {
-        if (!loading && !user) {
-            router.push("/login");
-        }
-    }, [user, loading, router]);
+    const [mounted, setMounted] = useState(false);
 
-    if (loading) {
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (mounted && !loading) {
+            if (!user) {
+                router.push("/login");
+            } else if (user.role === 'candidate') {
+                router.push("/portal");
+            }
+        }
+    }, [user, loading, mounted, router]);
+
+    if (!mounted || loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center animate-pulse">
-                        <Brain className="w-7 h-7 text-white" />
+            <div className="min-h-screen flex items-center justify-center bg-background" suppressHydrationWarning>
+                <div className="flex flex-col items-center gap-4" suppressHydrationWarning>
+                    <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center animate-pulse">
+                        <LayoutDashboard className="w-7 h-7 text-slate-500" />
                     </div>
-                    <p className="text-muted-foreground animate-pulse">Loading TalentSphere AI...</p>
+                    <p className="text-muted-foreground animate-pulse">TalentSphere HRMS</p>
                 </div>
             </div>
         );
@@ -66,16 +79,16 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     const filteredNav = navItems.filter((item) => item.roles.includes(user.role));
 
     const roleColors: Record<string, string> = {
-        admin: "from-violet-500 to-purple-600",
-        hr: "from-blue-500 to-cyan-500",
-        senior_manager: "from-emerald-500 to-green-500",
-        employee: "from-orange-500 to-amber-500",
+        admin: "bg-slate-700",
+        senior_manager: "bg-slate-700",
+        hr: "bg-slate-700",
+        employee: "bg-slate-700",
     };
 
     const roleLabels: Record<string, string> = {
-        admin: "Admin",
+        admin: "Management Admin",
         hr: "HR Recruiter",
-        senior_manager: "Sr. Manager",
+        senior_manager: "Senior Manager",
         employee: "Employee",
     };
 
@@ -85,7 +98,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     };
 
     return (
-        <div className="min-h-screen flex bg-background">
+        <div className="min-h-screen flex bg-background font-sans">
             {/* Mobile overlay */}
             {sidebarOpen && (
                 <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -98,16 +111,16 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         transition-all duration-300 ease-in-out
         bg-card border-r border-border flex flex-col
-      `}>
+      `} suppressHydrationWarning>
                 {/* Logo */}
                 <div className="h-16 flex items-center px-4 border-b border-border gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center flex-shrink-0">
-                        <Brain className="w-5 h-5 text-white" />
+                    <div className="w-9 h-9 rounded-lg bg-slate-900 dark:bg-slate-100 flex items-center justify-center flex-shrink-0">
+                        <LayoutDashboard className="w-5 h-5 text-white dark:text-slate-900" />
                     </div>
                     {!collapsed && (
                         <div className="overflow-hidden">
-                            <h1 className="text-sm font-bold tracking-tight whitespace-nowrap">TalentSphere AI</h1>
-                            <p className="text-[10px] text-muted-foreground">AI-Powered HRMS</p>
+                            <h1 className="text-sm font-bold tracking-tight whitespace-nowrap text-foreground">TalentSphere</h1>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Enterprise HRMS</p>
                         </div>
                     )}
                     <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto p-1">
@@ -127,12 +140,12 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
                   ${isActive
-                                        ? "bg-gradient-to-r from-violet-500/15 to-blue-500/10 text-violet-400 border border-violet-500/20"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                        ? "bg-slate-100 dark:bg-slate-800 text-foreground border border-border"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-slate-50 dark:hover:bg-slate-900"
                                     }
                 `}
                             >
-                                <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-violet-400" : ""}`} />
+                                <item.icon className="w-4 h-4 flex-shrink-0" />
                                 {!collapsed && (
                                     <>
                                         <span className="flex-1">{item.label}</span>
@@ -250,7 +263,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 lg:p-6 overflow-auto">
+                <main className="flex-1 p-4 lg:p-6 overflow-auto" suppressHydrationWarning>
                     {children}
                 </main>
             </div>

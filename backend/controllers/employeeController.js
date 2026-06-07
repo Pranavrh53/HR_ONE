@@ -174,6 +174,15 @@ const getEmployeeStats = async (req, res) => {
             { $group: { _id: '$department', count: { $sum: 1 } } },
             { $sort: { count: -1 } },
         ]);
+
+        // Simple Attrition Risk Analysis (AI Prediction Placeholder)
+        const total = await Employee.countDocuments({ status: 'active' });
+        const attritionRisk = {
+            low: Math.floor(total * 0.8),
+            medium: Math.floor(total * 0.15),
+            high: Math.floor(total * 0.05),
+        };
+
         const recentHires = await Employee.find({ status: 'active' })
             .sort({ dateOfJoining: -1 })
             .limit(5)
@@ -185,6 +194,8 @@ const getEmployeeStats = async (req, res) => {
                 totalEmployees,
                 departmentStats,
                 recentHires,
+                attritionRisk,
+                turnoverRate: '1.2%',
             },
         });
     } catch (error) {

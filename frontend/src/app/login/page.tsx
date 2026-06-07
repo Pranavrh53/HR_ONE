@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Brain, Eye, EyeOff, Sparkles, Shield, Users, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Eye, EyeOff, Shield, Users, BarChart3 } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -24,8 +24,10 @@ export default function LoginPage() {
         setError("");
         setLoading(true);
         try {
-            await login(email, password);
-            router.push("/dashboard");
+            const userData = await login(email, password);
+            // Route candidates to their portal, staff to dashboard
+            const role = (userData as any)?.role || '';
+            router.push(role === 'candidate' ? '/portal' : '/dashboard');
         } catch (err: any) {
             setError(err.response?.data?.message || "Login failed. Please try again.");
         } finally {
@@ -34,62 +36,51 @@ export default function LoginPage() {
     };
 
     const demoLogins = [
-        { role: "Admin", email: "admin@talentsphere.com", password: "admin123", icon: Shield, color: "from-violet-500 to-purple-600" },
-        { role: "HR Recruiter", email: "hr@talentsphere.com", password: "hr123456", icon: Users, color: "from-blue-500 to-cyan-500" },
-        { role: "Manager", email: "manager@talentsphere.com", password: "manager123", icon: BarChart3, color: "from-emerald-500 to-green-500" },
-        { role: "Employee", email: "amit@talentsphere.com", password: "employee123", icon: Sparkles, color: "from-orange-500 to-amber-500" },
+        { role: "Management Admin", email: "admin@talentsphere.com", password: "admin123", icon: Shield, color: "bg-slate-700" },
+        { role: "HR Recruiter", email: "hr@talentsphere.com", password: "hr123456", icon: Users, color: "bg-slate-700" },
+        { role: "Senior Manager", email: "manager@talentsphere.com", password: "manager123", icon: BarChart3, color: "bg-slate-700" },
+        { role: "Employee", email: "amit@talentsphere.com", password: "employee123", icon: Users, color: "bg-slate-700" },
     ];
 
     return (
         <div className="min-h-screen flex">
             {/* Left Panel - Branding */}
-            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900">
-                {/* Animated Background */}
+            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-slate-950">
+                {/* Subtle Background */}
                 <div className="absolute inset-0">
-                    <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-violet-500/20 rounded-full blur-3xl animate-pulse" />
-                    <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/15 rounded-full blur-3xl animate-pulse delay-1000" />
-                    <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl animate-pulse delay-500" />
+                    <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-slate-800 rounded-full blur-3xl opacity-50" />
+                    <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-slate-900 rounded-full blur-3xl opacity-50" />
                 </div>
 
-                {/* Grid pattern */}
-                <div className="absolute inset-0 opacity-5"
-                    style={{
-                        backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-                        backgroundSize: '50px 50px'
-                    }}
-                />
-
-                <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center">
-                            <Brain className="w-7 h-7" />
+                <div className="relative z-10 flex flex-col justify-center px-16 text-white w-full">
+                    <div className="flex items-center gap-3 mb-10">
+                        <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center font-bold text-slate-950">
+                            <LayoutDashboard className="w-6 h-6" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold tracking-tight">TalentSphere AI</h1>
-                            <p className="text-sm text-violet-300">Intelligent HR Management</p>
+                            <h1 className="text-2xl font-bold tracking-tight">TalentSphere</h1>
+                            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Enterprise HRMS</p>
                         </div>
                     </div>
 
-                    <h2 className="text-4xl font-bold leading-tight mb-4">
-                        Transform Your HR<br />
-                        <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-                            With AI Intelligence
-                        </span>
+                    <h2 className="text-4xl font-bold leading-tight mb-6">
+                        The Operating System for<br />
+                        <span className="text-slate-400">Modern Workforce.</span>
                     </h2>
-                    <p className="text-lg text-slate-300 mb-10 max-w-md">
-                        Automate recruitment, streamline employee management, and unlock workforce insights with cutting-edge AI technology.
+                    <p className="text-lg text-slate-400 mb-12 max-w-md leading-relaxed">
+                        A unified platform for recruitment, payroll, and employee lifecycle management. Built for enterprise scale and operational excellence.
                     </p>
 
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 max-w-lg">
                         {[
-                            { icon: "🤖", text: "AI-Powered Resume Screening & Ranking" },
-                            { icon: "📊", text: "Real-Time Analytics Dashboard" },
-                            { icon: "💬", text: "Smart HR Chatbot Assistant" },
-                            { icon: "🎯", text: "Attrition Risk Prediction" },
+                            { title: "Core HR", desc: "Centralized employee records" },
+                            { title: "Recruitment", desc: "End-to-end hiring pipeline" },
+                            { title: "Payroll", desc: "Automated global disbursements" },
+                            { title: "Analytics", desc: "Deep workforce intelligence" },
                         ].map((feature, i) => (
-                            <div key={i} className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-lg px-4 py-3 border border-white/10">
-                                <span className="text-xl">{feature.icon}</span>
-                                <span className="text-sm text-slate-200">{feature.text}</span>
+                            <div key={i} className="p-4 rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm">
+                                <p className="text-sm font-bold text-white mb-1">{feature.title}</p>
+                                <p className="text-xs text-slate-500">{feature.desc}</p>
                             </div>
                         ))}
                     </div>
@@ -101,10 +92,10 @@ export default function LoginPage() {
                 <div className="w-full max-w-md space-y-8">
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex items-center gap-3 justify-center mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center">
-                            <Brain className="w-6 h-6 text-white" />
+                        <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center">
+                            <LayoutDashboard className="w-5 h-5 text-white" />
                         </div>
-                        <h1 className="text-xl font-bold">TalentSphere AI</h1>
+                        <h1 className="text-xl font-bold">TalentSphere</h1>
                     </div>
 
                     <div className="text-center lg:text-left">
@@ -166,9 +157,10 @@ export default function LoginPage() {
                         </Button>
                     </form>
 
-                    <p className="text-sm text-muted-foreground text-center">
-                        Looking to apply? <Link href="/careers" className="text-violet-400 hover:text-violet-300">Visit the Career Portal</Link>
-                    </p>
+                    <div className="flex items-center justify-between text-sm">
+                        <Link href="/register" className="text-violet-400 hover:text-violet-300">Create an account</Link>
+                        <Link href="/forgot-password" className="text-muted-foreground hover:text-foreground">Forgot password?</Link>
+                    </div>
 
                     {/* Demo Login Cards */}
                     <div className="pt-4">

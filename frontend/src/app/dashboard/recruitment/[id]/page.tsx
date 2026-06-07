@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
     Star, ArrowLeft, Users, CheckCircle, AlertCircle, XCircle,
-    Brain, GitCompare, Sparkles, ChevronRight, RefreshCw, Mic, BarChart3, Target
+    Brain, GitCompare, Sparkles, ChevronRight, RefreshCw, Mic, BarChart3, Target, Briefcase,
+    FileText, UserPlus, Award, Send, Loader2
 } from "lucide-react";
 import CandidateCompareModal from "@/components/CandidateCompareModal";
 
@@ -48,6 +49,7 @@ export default function JobRecruitmentDashboard({ params }: { params: Promise<{ 
     const [applications, setApplications] = useState<any[]>([]);
     const [stats, setStats] = useState<any>(null);
     const [interviews, setInterviews] = useState<any[]>([]);
+    const [decisions, setDecisions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [compareOpen, setCompareOpen] = useState(false);
@@ -56,21 +58,26 @@ export default function JobRecruitmentDashboard({ params }: { params: Promise<{ 
     const [shortlistMin, setShortlistMin] = useState(75);
     const [shortlistTopN, setShortlistTopN] = useState(10);
     const [actionMsg, setActionMsg] = useState("");
-    const [activeTab, setActiveTab] = useState<"candidates" | "interviews">("candidates");
+    const [activeTab, setActiveTab] = useState<"candidates" | "interviews" | "pipeline">("candidates");
+    const [offerModal, setOfferModal] = useState<any>(null);
+    const [offerForm, setOfferForm] = useState({ salary: "", joiningDate: "", reportingManager: "" });
+    const [offerLoading, setOfferLoading] = useState(false);
 
     const fetchData = async (silent = false) => {
         try {
             if (!silent) setLoading(true);
-            const [jobRes, appsRes, statsRes, interviewRes] = await Promise.all([
+            const [jobRes, appsRes, statsRes, interviewRes, decisionsRes] = await Promise.all([
                 api.get(`/jobs/${jobId}`),
                 api.get(`/resumes`, { params: { jobId } }),
                 api.get(`/resumes/stats`, { params: { jobId } }),
                 api.get(`/interview/list/${jobId}`).catch(() => ({ data: { data: [] } })),
+                api.get(`/hiring/decisions`, { params: { jobId } }).catch(() => ({ data: { data: [] } })),
             ]);
             setJob(jobRes.data.data);
             setApplications(appsRes.data.data || []);
             setStats(statsRes.data.data || null);
             setInterviews(interviewRes.data.data || []);
+            setDecisions(decisionsRes.data.data || []);
             return statsRes.data.data;
         } catch (e) {
             console.error(e);
@@ -163,9 +170,64 @@ export default function JobRecruitmentDashboard({ params }: { params: Promise<{ 
         setApplications(prev => prev.map(r => r._id === resumeId ? { ...r, status: 'rejected' } : r));
     };
 
+    const handleGenerateOffer = async (decisionId: string) => {
+        setOfferLoading(true);
+        try {
+            await api.post(`/hiring/decisions/${decisionId}/offer`, {
+                salary: Number(offerForm.salary) || 0,
+                joiningDate: offerForm.joiningDate || null,
+                reportingManager: offerForm.reportingManager || '',
+            });
+            setOfferModal(null);
+            setOfferForm({ salary: "", joiningDate: "", reportingManager: "" });
+            setActionMsg("Offer letter generated & sent!");
+            fetchData(true);
+        } catch (e: any) {
+            setActionMsg(e.response?.data?.message || "Failed to generate offer");
+        } finally {
+            setOfferLoading(false);
+        }
+    };
+
+    const handleRejectDecision = async (decisionId: string) => {
+        try {
+            await api.post(`/hiring/decisions/${decisionId}/reject`);
+            setActionMsg("Candidate rejected.");
+            fetchData(true);
+        } catch (e: any) {
+            setActionMsg(e.response?.data?.message || "Failed");
+        }
+    };
+
+    const handleCompleteOnboarding = async (onboardingId: string) => {
+        try {
+            await api.post(`/hiring/onboarding/${onboardingId}/complete`);
+            setActionMsg("Employee created successfully!");
+            fetchData(true);
+        } catch (e: any) {
+            setActionMsg(e.response?.data?.message || "Failed");
+        }
+    };
+
+    const pipelineStatusColor: Record<string, string> = {
+        awaiting_hr_review: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+        top_candidate: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+        recommended: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+        needs_hr_review: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+        not_recommended: "bg-red-500/10 text-red-400 border-red-500/30",
+        selected: "bg-violet-500/10 text-violet-400 border-violet-500/30",
+        rejected: "bg-red-500/10 text-red-400 border-red-500/30",
+        offer_generated: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+        offer_accepted: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+        offer_declined: "bg-red-500/10 text-red-300 border-red-500/20",
+        onboarding_started: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
+        employee_created: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
+    };
+
     const tabs = [
         { key: "candidates", label: `All Candidates (${applications.length})` },
         { key: "interviews", label: `AI Interviews (${interviews.length})` },
+        { key: "pipeline", label: `Hiring Pipeline (${decisions.length})` },
     ] as const;
 
     return (
@@ -183,9 +245,14 @@ export default function JobRecruitmentDashboard({ params }: { params: Promise<{ 
                         </h1>
                         <p className="text-muted-foreground mt-1">{job?.department} · {job?.location}</p>
                     </div>
-                    <Badge className={`text-xs border ${job?.status === 'open' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-muted/50 border-muted'}`}>
-                        {job?.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                        <Link href="/dashboard/hiring" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 transition-all text-xs font-medium">
+                            <Briefcase className="w-3 h-3" /> Hiring Decisions
+                        </Link>
+                        <Badge className={`text-xs border ${job?.status === 'open' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-muted/50 border-muted'}`}>
+                            {job?.status}
+                        </Badge>
+                    </div>
                 </div>
             </div>
 
@@ -409,6 +476,161 @@ export default function JobRecruitmentDashboard({ params }: { params: Promise<{ 
                         )}
                     </CardContent>
                 </Card>
+            )}
+
+            {/* ── HIRING PIPELINE TAB ── */}
+            {activeTab === "pipeline" && (
+                <Card className="border-border/50">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Award className="w-5 h-5 text-violet-400" /> Post-Interview Hiring Pipeline
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {decisions.length === 0 ? (
+                            <div className="py-10 text-center space-y-3">
+                                <Award className="w-10 h-10 text-muted-foreground mx-auto" />
+                                <p className="font-medium">No Hiring Decisions Yet</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Candidates will appear here automatically after completing their AI interview.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {/* Pipeline mini-banner */}
+                                <div className="flex items-center gap-2 p-3 rounded-lg bg-violet-500/5 border border-violet-500/20 text-xs text-violet-300 flex-wrap">
+                                    {["AI Interview ✓", "Awaiting Review", "Selected", "Offer Generated", "Onboarding", "Employee"].map((s, i) => (
+                                        <span key={s} className="flex items-center gap-1">
+                                            {i > 0 && <ChevronRight className="w-3 h-3 opacity-40" />}
+                                            <span className="px-2 py-0.5 rounded bg-violet-500/15">{s}</span>
+                                        </span>
+                                    ))}
+                                </div>
+
+                                {decisions.map((d: any, i: number) => (
+                                    <div key={d._id} className="flex items-center gap-3 p-4 rounded-lg border border-border/50 hover:border-violet-500/30 transition-all">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i === 0 ? 'bg-amber-500 text-black' : 'bg-muted text-muted-foreground'}`}>
+                                            #{d.rank || i + 1}
+                                        </div>
+                                        <ScoreRing score={d.finalScore || 0} />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-semibold">{d.candidateName}</span>
+                                                <Badge className={`text-[10px] border ${pipelineStatusColor[d.status] || 'bg-muted/50 text-muted-foreground border-muted'}`}>
+                                                    {d.statusLabel || d.status}
+                                                </Badge>
+                                                <Badge variant="outline" className="text-[10px]">{d.classification}</Badge>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                {d.candidateEmail} · Resume {d.resumeScore}% · Interview {d.interviewScore}% · Final {d.finalScore}%
+                                            </p>
+                                        </div>
+
+                                        {/* Action buttons based on status */}
+                                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                                            {/* Awaiting review / recommended → Select or Reject */}
+                                            {['awaiting_hr_review', 'top_candidate', 'recommended', 'needs_hr_review'].includes(d.status) && (
+                                                <>
+                                                    <Button size="sm" onClick={() => setOfferModal(d)}
+                                                        className="text-xs bg-emerald-600 hover:bg-emerald-700 h-7 px-2 gap-1">
+                                                        <FileText className="w-3 h-3" /> Select & Offer
+                                                    </Button>
+                                                    <Button size="sm" variant="outline" onClick={() => handleRejectDecision(d._id)}
+                                                        className="text-xs text-red-400 border-red-500/30 hover:bg-red-500/10 h-7 px-2">
+                                                        ✗ Reject
+                                                    </Button>
+                                                </>
+                                            )}
+
+                                            {/* Selected / Offer sent → waiting */}
+                                            {['selected', 'offer_generated'].includes(d.status) && (
+                                                <Badge className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                                                    <Send className="w-3 h-3 mr-1" /> Offer Sent
+                                                </Badge>
+                                            )}
+
+                                            {/* Offer accepted → Start Onboarding */}
+                                            {d.status === 'offer_accepted' && d.onboardingRecord && (
+                                                <Button size="sm" onClick={() => handleCompleteOnboarding(d.onboardingRecord._id || d.onboardingRecord)}
+                                                    className="text-xs bg-cyan-600 hover:bg-cyan-700 h-7 px-2 gap-1">
+                                                    <UserPlus className="w-3 h-3" /> Complete Onboarding
+                                                </Button>
+                                            )}
+
+                                            {d.status === 'onboarding_started' && d.onboardingRecord && (
+                                                <Button size="sm" onClick={() => handleCompleteOnboarding(d.onboardingRecord._id || d.onboardingRecord)}
+                                                    className="text-xs bg-cyan-600 hover:bg-cyan-700 h-7 px-2 gap-1">
+                                                    <UserPlus className="w-3 h-3" /> Create Employee
+                                                </Button>
+                                            )}
+
+                                            {/* Employee created */}
+                                            {d.status === 'employee_created' && (
+                                                <Badge className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                                    <CheckCircle className="w-3 h-3 mr-1" /> Employee Created
+                                                </Badge>
+                                            )}
+
+                                            {d.status === 'rejected' && (
+                                                <Badge className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/30">
+                                                    Rejected
+                                                </Badge>
+                                            )}
+
+                                            {d.status === 'offer_declined' && (
+                                                <Badge className="text-[10px] bg-red-500/10 text-red-300 border border-red-500/20">
+                                                    Offer Declined
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {decisions.length > 1 && (
+                                    <div className="mt-3 p-3 rounded-lg bg-violet-500/5 border border-violet-500/20 text-xs text-violet-300 flex items-center gap-2">
+                                        <Target className="w-4 h-4" />
+                                        <strong>AI Recommendation:</strong> {decisions[0]?.candidateName} (Rank #1, Score {decisions[0]?.finalScore}%) — {decisions[0]?.classification}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Offer Letter Modal */}
+            {offerModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="fixed inset-0 bg-black/50" onClick={() => setOfferModal(null)} />
+                    <div className="relative z-50 w-full max-w-md mx-4 bg-popover rounded-xl p-6 shadow-xl border border-border">
+                        <h2 className="text-lg font-semibold mb-1">Generate Offer Letter</h2>
+                        <p className="text-xs text-muted-foreground mb-4">For {offerModal.candidateName} · Score: {offerModal.finalScore}%</p>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs text-muted-foreground">Annual Salary (₹)</label>
+                                <Input type="number" placeholder="e.g. 1200000" value={offerForm.salary}
+                                    onChange={(e) => setOfferForm({ ...offerForm, salary: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className="text-xs text-muted-foreground">Joining Date</label>
+                                <Input type="date" value={offerForm.joiningDate}
+                                    onChange={(e) => setOfferForm({ ...offerForm, joiningDate: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className="text-xs text-muted-foreground">Reporting Manager</label>
+                                <Input placeholder="e.g. John Doe" value={offerForm.reportingManager}
+                                    onChange={(e) => setOfferForm({ ...offerForm, reportingManager: e.target.value })} />
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                                <Button onClick={() => setOfferModal(null)} variant="outline" className="flex-1">Cancel</Button>
+                                <Button onClick={() => handleGenerateOffer(offerModal._id)} disabled={offerLoading}
+                                    className="flex-1 bg-gradient-to-r from-emerald-600 to-blue-600 text-white">
+                                    {offerLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><FileText className="w-4 h-4 mr-1" /> Generate & Send</>}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
 
             <CandidateCompareModal

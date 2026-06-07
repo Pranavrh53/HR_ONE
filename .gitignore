@@ -51,3 +51,5 @@ backend/.env
 
 node_modules/
 .next/
+
+ai-service/.env

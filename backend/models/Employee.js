@@ -18,7 +18,6 @@ const employeeSchema = new mongoose.Schema({
     },
     lastName: {
         type: String,
-        required: [true, 'Last name is required'],
         trim: true,
     },
     email: {

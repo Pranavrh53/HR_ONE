@@ -13,6 +13,9 @@ WEIGHTS = {
     "experience": 15,       # years + role relevance
     "education": 10,        # degree alignment
     "projects": 15,         # projects + certifications
+    "certifications": 5,    # standalone certification signal used by the scorer
+    "achievements": 5,      # quantified impact / awards signal
+    "resume_quality": 5,    # basic resume structure / completeness signal
 }
 
 SKILL_ALIASES: Dict[str, List[str]] = {
@@ -471,7 +474,7 @@ def score_education(resume_text: str, job_description: str) -> Tuple[float, str]
 
 
 def score_certifications(resume_text: str, required_skills: List[str]) -> Tuple[float, str]:
-    max_pts = WEIGHTS["certifications"]
+    max_pts = WEIGHTS.get("certifications", 5)
     certs = extract_certifications(resume_text)
     if not certs:
         cert_mentions = len(re.findall(r"\bcertif", resume_text, re.I))
@@ -495,7 +498,7 @@ def score_certifications(resume_text: str, required_skills: List[str]) -> Tuple[
 
 
 def score_achievements(resume_text: str) -> Tuple[float, str]:
-    max_pts = WEIGHTS["achievements"]
+    max_pts = WEIGHTS.get("achievements", 5)
     achievements = extract_achievements(resume_text)
     if not achievements:
         return 0.0, "No quantifiable achievements or awards detected"
@@ -506,7 +509,7 @@ def score_achievements(resume_text: str) -> Tuple[float, str]:
 
 
 def score_resume_quality(resume_text: str) -> Tuple[float, str]:
-    max_pts = WEIGHTS["resume_quality"]
+    max_pts = WEIGHTS.get("resume_quality", 5)
     checks = {
         "contact": bool(re.search(r"[@+]\s*\d|@\w+\.\w+|linkedin|github", resume_text, re.I)),
         "skills_section": bool(re.search(r"\bSKILLS?\b|\bTECHNOLOGIES\b", resume_text, re.I)),
@@ -629,40 +632,44 @@ def build_specific_fallback_explanation(
 
     # Projects
     projects = context.get("projects", [])
-    if scores["projects_score"] >= 12 and projects:
+    proj_score = scores.get("projects_score", 0)
+    if proj_score >= 12 and projects:
         strengths.append(
             f"Project work shows technical depth relevant to {job_title}: \"{projects[0][:100]}...\""
         )
-    elif scores["projects_score"] < 8:
+    elif proj_score < 8:
         weaknesses.append(
             "Limited project descriptions with measurable outcomes or JD-aligned technical complexity."
         )
 
     # Experience
-    if scores["experience_score"] >= 15:
+    exp_score = scores.get("experience_score", 0)
+    if exp_score >= 15:
         roles = context.get("roles", [])
         if roles:
             strengths.append(
                 f"Professional background includes roles aligned with this position (e.g. {roles[0][:60]})."
             )
-    elif scores["experience_score"] < 10:
+    elif exp_score < 10:
         weaknesses.append(
-            f"Experience section does not clearly establish {scores['years_of_experience']} of directly relevant {job_title} responsibilities."
+            f"Experience section does not clearly establish {scores.get('years_of_experience', 'N/A')} of directly relevant {job_title} responsibilities."
         )
 
     # Education
-    if scores["education_score"] >= 6:
+    edu_score = scores.get("education_score", 0)
+    if edu_score >= 6:
         strengths.append(
-            f"Educational background ({scores['education']}) aligns with technical requirements for this role."
+            f"Educational background ({scores.get('education', 'N/A')}) aligns with technical requirements for this role."
         )
-    elif scores["education_score"] < 4:
+    elif edu_score < 4:
         weaknesses.append("Degree or specialization is unclear or may not match role requirements.")
 
     # Certifications
     certs = context.get("certifications", [])
-    if certs and scores["certifications_score"] >= 4:
+    cert_score = scores.get("certifications_score", 0)
+    if certs and cert_score >= 4:
         strengths.append(f"Industry certifications strengthen credibility: {certs[0][:70]}.")
-    elif scores["certifications_score"] == 0 and context.get("missing_skills"):
+    elif cert_score == 0 and context.get("missing_skills"):
         weaknesses.append("No certifications found to compensate for missing required technical skills.")
 
     # Achievements
@@ -671,7 +678,7 @@ def build_specific_fallback_explanation(
         strengths.append(f"Quantifiable impact or recognition: {achievements[0][:100]}.")
 
     # Resume quality
-    if scores.get("semantic_score", 0) < WEIGHTS["semantic"] * 0.4:
+    if scores.get("semantic_score", 0) < WEIGHTS.get("semantic", 25) * 0.4:
         weaknesses.append("Resume content shows limited semantic alignment with the job description beyond keyword matching.")
 
     missing = context.get("missing_skills", [])
@@ -686,10 +693,12 @@ def build_specific_fallback_explanation(
         weaknesses.append("No major red flags; confirm cultural and team fit in interview.")
 
     breakdown = scores.get("score_breakdown", [])
-    breakdown_str = "; ".join(f"{b['category']} {b['score']}/{b['max']}" for b in breakdown[:3])
+    breakdown_str = "; ".join(f"{b.get('category','')} {b.get('score',0)}/{b.get('max',0)}" for b in breakdown[:3])
 
+    final_score = scores.get("final_score", 0)
+    recommendation = scores.get("recommendation", "Needs Review")
     summary = (
-        f"Overall suitability {scores['final_score']}/100 for {job_title} ({scores['recommendation']}). "
+        f"Overall suitability {final_score}/100 for {job_title} ({recommendation}). "
         f"Strongest areas: {breakdown_str}. "
         f"Evaluation uses 7-factor recruiter model — not skill matching alone."
     )
@@ -741,9 +750,10 @@ def build_recruiter_insights(
     if projects:
         parts.append(f"Relevant project portfolio including work on {projects[0][:70]}")
 
-    if scores["experience_score"] >= 15:
-        parts.append(f"Experience profile ({scores['years_of_experience']}) aligns with the {job_title} role")
-    elif scores["experience_score"] < 10:
+    exp_score = scores.get("experience_score", 0)
+    if exp_score >= 15:
+        parts.append(f"Experience profile ({scores.get('years_of_experience', 'N/A')}) aligns with the {job_title} role")
+    elif exp_score < 10:
         parts.append("Professional experience is unclear or below typical requirements for this role")
 
     if missing:
@@ -755,7 +765,7 @@ def build_recruiter_insights(
     if achievements:
         parts.append(f"Notable achievement: {achievements[0][:80]}")
 
-    rec = scores["recommendation"]
+    rec = scores.get("recommendation", "Needs Review")
     if rec in ("Highly Recommended", "Recommended"):
         parts.append("Suitable for technical interview round")
     elif rec == "Needs Review":
@@ -763,8 +773,9 @@ def build_recruiter_insights(
     else:
         parts.append("May not be the best fit without significant skill development")
 
+    final_score = scores.get("final_score", 0)
     body = ". ".join(parts) + "." if parts else "Profile requires manual recruiter review."
-    return f"{body} Overall ATS score: {scores['final_score']}/100 ({rec})."
+    return f"{body} Overall ATS score: {final_score}/100 ({rec})."
 
 
 def build_explanation_prompt(
@@ -797,7 +808,7 @@ DO NOT list skills as bullet strengths — explain WHY they matter for this role
 Job Title: {job_title}
 Job Description: {job_description[:1200]}
 
-PRE-COMPUTED SCORE: {scores['final_score']}/100 — {scores['recommendation']}
+PRE-COMPUTED SCORE: {scores.get('final_score', 0)}/100 — {scores.get('recommendation', 'Needs Review')}
 SCORE BREAKDOWN (do not modify):
 {breakdown_json}
 

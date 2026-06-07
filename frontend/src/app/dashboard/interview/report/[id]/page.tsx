@@ -104,8 +104,13 @@ export default function InterviewReportPage() {
                     <div>
                         <p className="text-lg font-bold">Final Score: {session.finalScore}%</p>
                         <p className="text-sm text-muted-foreground mt-1">
-                            Resume ({session.resumeScore}% × 60%) + Interview ({session.interviewScore}% × 40%)
+                            Resume ({session.resumeScore}% × 40%) + Interview ({session.interviewScore}% × 60%)
                         </p>
+                        {session.report?.hiringRecommendation && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                                HR classification: <span className="text-foreground font-medium">{session.report.hiringRecommendation}</span> · Status: <span className="text-foreground font-medium capitalize">{session.report.hiringStatus?.replaceAll('_', ' ') || 'Awaiting HR Review'}</span>
+                            </p>
+                        )}
                     </div>
                     <div className={`text-3xl font-black ${rec.color}`}>
                         {r.recommendation}

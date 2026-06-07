@@ -7,7 +7,7 @@ interface User {
     id: string;
     name: string;
     email: string;
-    role: 'admin' | 'senior_manager' | 'hr' | 'employee';
+    role: 'admin' | 'senior_manager' | 'hr' | 'employee' | 'candidate';
     department?: string;
     designation?: string;
     avatar?: string;
@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData);
         localStorage.setItem('token', newToken);
         localStorage.setItem('user', JSON.stringify(userData));
+        return userData;
     };
 
     const register = async (data: any) => {

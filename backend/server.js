@@ -14,6 +14,10 @@ const jobRoutes = require('./routes/jobRoutes');
 const careerRoutes = require('./routes/careerRoutes');
 const resumeRoutes = require('./routes/resumeRoutes');
 const interviewRoutes = require('./routes/interviewRoutes');
+const hiringRoutes = require('./routes/hiringRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const payrollRoutes = require('./routes/payrollRoutes');
+
 
 const app = express();
 
@@ -22,7 +26,7 @@ connectDB();
 
 // Middleware
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://192.168.29.65:3000'],
     credentials: true,
 }));
 app.use(express.json({ limit: '50mb' }));
@@ -41,6 +45,10 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/careers', careerRoutes);
 app.use('/api/resumes', resumeRoutes);
 app.use('/api/interview', interviewRoutes);
+app.use('/api/hiring', hiringRoutes);
+app.use('/api/hr-chat', chatRoutes);
+app.use('/api/payroll', payrollRoutes);
+
 
 // Health check
 app.get('/api/health', (req, res) => {

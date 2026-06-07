@@ -2,6 +2,7 @@ const InterviewSession = require('../models/InterviewSession');
 const Resume = require('../models/Resume');
 const Job = require('../models/Job');
 const axios = require('axios');
+const { createOrUpdateHiringDecision } = require('../utils/hiringWorkflow');
 
 const AI_SERVICE = 'http://localhost:8000';
 
@@ -128,19 +129,23 @@ exports.finishInterview = async (req, res) => {
             ? Math.round(session.answers.reduce((sum, a) => sum + (a.technicalScore + a.communicationScore + a.clarityScore + a.relevanceScore) / 4, 0) / totalAnswers)
             : 0;
 
-        // Final score = Resume 60% + Interview 40%
-        const finalScore = Math.round((session.resumeScore * 0.6) + (interviewScore * 0.4));
+        // Final hiring score = Resume 40% + Interview 60%
+        const finalScore = Math.round((session.resumeScore * 0.4) + (interviewScore * 0.6));
 
         session.status = 'completed';
         session.completedAt = new Date();
         session.interviewScore = interviewScore;
         session.finalScore = finalScore;
         session.report = {
+            ...(session.report || {}),
             communicationScore: report.communication_score || 0,
             technicalScore: report.technical_score || 0,
             problemSolvingScore: report.problem_solving_score || 0,
             behavioralScore: report.behavioral_score || 0,
             overallScore: report.overall_score || 0,
+            hiringScore: finalScore,
+            hiringRecommendation: '',
+            hiringStatus: 'awaiting_hr_review',
             strengths: report.strengths || [],
             weaknesses: report.weaknesses || [],
             recommendation: report.recommendation || 'Consider',
@@ -149,8 +154,20 @@ exports.finishInterview = async (req, res) => {
 
         await session.save();
 
-        // Update resume status
-        await Resume.findByIdAndUpdate(session.candidate, { status: 'interviewed' });
+        const resume = await Resume.findById(session.candidate).populate('job');
+        if (resume && resume.job) {
+            const decision = await createOrUpdateHiringDecision({
+                session,
+                resume,
+                job: resume.job,
+                interviewScore,
+                report,
+            });
+            session.hiringDecision = decision._id;
+            await session.save();
+        } else {
+            await Resume.findByIdAndUpdate(session.candidate, { status: 'awaiting_hr_review', hiringScore: finalScore });
+        }
 
         res.json({ success: true, data: session });
     } catch (err) {
