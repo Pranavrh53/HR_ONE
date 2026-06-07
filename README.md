@@ -31,37 +31,45 @@
 
 ## Key Features
 
-### 🤖 AI-Powered Recruitment
-- **Resume Screening** — Upload single or bulk PDFs; the AI service extracts text via PyMuPDF, runs a deterministic ATS scoring pipeline, and optionally enriches results with Google Gemini explanations.
-- **Candidate Ranking** — Automatic scoring and ranking of all applicants against a job description with skill-match percentages.
-- **Candidate Comparison** — Side-by-side AI comparison of shortlisted candidates with a final hiring recommendation.
+### 🤖 AI-Powered Recruitment & Bulk Screening
+- **Bulk Resume Screening** — Upload hundreds of resumes (PDFs) simultaneously; the system extracts text via PyMuPDF and runs a high-performance parallel screening pipeline.
+- **7-Factor ATS Scoring** — Deterministic scoring based on Skills (Exact + Semantic), Experience Relevance, Project Depth, Education Alignment, Certifications, Achievements, and Resume Quality.
+- **Semantic Skill Match** — Uses `Sentence-Transformers` for vector-based semantic similarity between resume content and Job Descriptions.
+- **Candidate Ranking & Auto-Shortlisting** — Automatic ranking of the entire applicant pool with configurable AI score thresholds for auto-shortlisting candidates for interviews.
+- **Candidate Comparison** — Side-by-side AI evaluation of top-tier candidates with a comparative report and final hiring recommendation.
 
-### 🎙️ AI Voice Interview
-- AI-generated, role-specific interview questions (10 questions: intro → technical → system design → behavioural → closing).
-- Real-time answer evaluation with technical, communication, clarity, and relevance scores.
-- Dynamic follow-up question generation based on candidate responses.
-- Full interview transcript and final hire/reject recommendation.
+### 🎙️ AI Video/Voice Interview Analysis
+- **Dynamic Question Generation** — Generates exactly 10 role-specific questions (Intro → Technical → System Design → Behavioral → Closing) tailored to the candidate's resume gaps.
+- **Real-Time Answer Evaluation** — Scores every response across 4 dimensions: Technical Depth, Communication, Clarity, and Relevance.
+- **Intelligent Follow-Up** — Generates dynamic follow-up questions in real-time based on the candidate's previous response for a natural conversation flow.
+- **Final Interview Analysis** — Full transcript generation with a comprehensive analysis of strengths, weaknesses, and a technical competency score.
 
-### 👔 Hiring Workflow
-- End-to-end pipeline: Job Post → Application → Resume Screen → Shortlist → Interview → Offer → Onboarding.
-- Offer letter generation and email delivery via Nodemailer.
-- Candidate-to-employee conversion with automatic role and portal switch.
+### 📊 Executive HR Data Analytics
+- **Workforce Intelligence** — Real-time breakdown of headcount distribution across departments and locations.
+- **Predictive Attrition Risk** — Analyzes attendance patterns and engagement metrics to identify employees at high, medium, or low risk of turnover.
+- **Financial Analytics** — Monthly payroll disbursement tracking, average salary vs. market standards, and budget utilization reports.
+- **Recruitment Funnel** — Analytics on application volume, screening efficiency, and conversion rates from candidate to employee.
 
-### 📋 HR Dashboard
-- Employee directory with full profile management.
-- Attendance tracking (check-in / check-out) with monthly summaries.
-- Leave request management (apply, approve, reject) with balance tracking.
-- Payroll management with salary slip generation.
-- Onboarding task tracker for newly converted employees.
+### 👔 Hiring & Automated Onboarding
+- **End-to-End Workflow** — Seamless pipeline management: Job Post → Application → AI Screen → Interview → Offer → Onboarding → Hire.
+- **Automated Offer Management** — Dynamic offer letter generation with custom salary/joining components and automated delivery via Nodemailer.
+- **Employee Conversion** — One-click conversion of candidates to employees, automatically updating system roles, permissions, and portal access.
+- **Onboarding Task Tracker** — Structured onboarding workflows with task management for new hires (document submission, orientations, system setup).
 
-### 💬 HR AI Chat Assistant
-- Context-aware Gemini-powered chat restricted to HR topics (leave, payroll, policies, recruitment).
-- Separate tone/persona for candidates vs. employees vs. HR managers.
+### 📋 HR & Employee Lifecycle Management
+- **Unified Employee Directory** — Centralized management of employee profiles, skills, and departmental assignments.
+- **Attendance & Leave Management** — Real-time check-in/out tracking with automated monthly summaries and a comprehensive leave approval system with balance tracking.
+- **Payroll & Payslips** — Integrated payroll processing with automated salary slip generation and secure access for employees.
 
-### 🔐 Authentication & Role-Based Access
-- JWT-based authentication with HTTP-only cookie sessions.
-- Three roles: `hr`, `employee`, `candidate` — each locked to their own portal.
-- Password reset via email token.
+### 💬 Role-Aware AI HR Assistant
+- **Persona-Based Interaction** — Specialized AI behavior for Candidates (application status), Employees (policies/leave), and HR Managers (recruitment stats).
+- **Domain-Restricted Knowledge** — Restricted to HR topics (Payroll, Leave, Recruitment, Policies) to ensure professional and accurate assistance.
+- **Context-Aware Responses** — Leverages user-specific data (leave balance, application status) to provide personalized resolutions.
+
+### 🔐 Multi-User Portal Functionality
+- **Triple-Role Architecture** — Unified login system with automatic redirection to dedicated portals for `HR`, `Employee`, and `Candidate`.
+- **RBAC (Role-Based Access Control)** — Strict JWT-based authentication with HTTP-only cookies protecting role-specific API routes.
+- **Secure Sessions** — Persistent login with password reset workflows and secure credential management.
 
 ---
 

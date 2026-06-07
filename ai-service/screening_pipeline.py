@@ -18,6 +18,8 @@ WEIGHTS = {
     "resume_quality": 5,    # basic resume structure / completeness signal
 }
 
+# Skill aliases to capture common variations and related terms for key technologies
+
 SKILL_ALIASES: Dict[str, List[str]] = {
     "react": ["react.js", "reactjs", "react native", "react-native"],
     "node.js": ["nodejs", "node", "express.js", "expressjs"],
